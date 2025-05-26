@@ -10,3 +10,4 @@ __pycache__/autenticador.cpython-313.pyc
 __pycache__/maps.cpython-313.pyc
 requirements.txt
 .streamlit/secrets.toml
+src/__pycache__/authenticator.cpython-313.pyc
