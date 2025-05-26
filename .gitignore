@@ -1,0 +1,12 @@
+
+main.ipynb
+src/__pycache__/autenticador.cpython-313.pyc
+src/__pycache__/generate_date.cpython-313.pyc
+src/__pycache__/generate_files.cpython-313.pyc
+src/__pycache__/maps.cpython-313.pyc
+__pycache__/generate_date.cpython-313.pyc
+__pycache__/generate_files.cpython-313.pyc
+__pycache__/autenticador.cpython-313.pyc
+__pycache__/maps.cpython-313.pyc
+requirements.txt
+.streamlit/secrets.toml
