@@ -10,20 +10,20 @@ def display_map(ruta_csv):
 
     # Normalizar nombres de columnas
     df.columns = df.columns.str.strip().str.lower()
-
+    df.columns
     # Crear mapa base centrado en Sudamérica
-    mapa = folium.Map(location=[-10, -55], zoom_start=4, tiles="OpenStreetMap")
+    mapa = folium.Map(location=[-10, -55], zoom_start=4, tiles="OpenStreetMap", )
 
-    # Crear clúster de marcadores
+    # Crear cluster de marcadores
     marker_cluster = MarkerCluster().add_to(mapa)
 
     for _, row in df.iterrows():
         lat = row['latitude']
         lon = row['longitude']
         estacion = row['site name']
-        elevacion = row.get('elevation', 'N/A')
+        elevacion = row.get('Height (m)', 'N/A')
         region = row.get('country/region', 'Unknown')
-        last_date = row.get('last data available','Unknown')
+        last_date = row.get('last data','Unknown')
         receptor = row.get('receiver', 'Unknown')
         antena = row.get('antenna', 'Unknown')
         sistema = row.get('satellite system', 'Unknown')
