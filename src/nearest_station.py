@@ -1,16 +1,9 @@
-from geopy.distance import geodesic 
 import pandas as pd
+from geopy.distance import geodesic
 
-def find_nearest_station(lat, lon, stations_df):
-    user_location = (lat, lon)
+def find_nearest_station(ruta_csv, lat, lon, n=2):
+    df = pd.read_csv(ruta_csv, sep=";")
 
-    # Calculate distance for each station
-    stations_df["Distance_km"] = stations_df.apply(
-        lambda row: geodesic(user_location, (row["Latitude"], row["Longitude"])).kilometers,
-        axis=1
-    )
-
-    # Sort by distance and get 2 nearest
-    nearest_two = stations_df.sort_values("Distance_km").head(2).copy()
-
-    return nearest_two
+    df['distancia'] = df.apply(lambda row: geodesic((lat, lon), (row['Latitude'], row['Longitude'])).km, axis=1)
+    df = df.sort_values(by='distancia')
+    return df.head(n)

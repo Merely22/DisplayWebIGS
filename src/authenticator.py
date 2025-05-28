@@ -1,8 +1,7 @@
 import requests
 
-# Credenciales NASA Earthdata (protegidas, internas)
-_USERNAME = "joseSG"
-_PASSWORD = "Oropezita43"
+_USERNAME = "merely_22"
+_PASSWORD = "Mariaalarcon12"
 
 class SessionWithHeaderRedirection(requests.Session):
     AUTH_HOST = 'urs.earthdata.nasa.gov'
@@ -19,4 +18,3 @@ class SessionWithHeaderRedirection(requests.Session):
            (redirect_parsed.hostname != self.AUTH_HOST) and \
            (original_parsed.hostname != self.AUTH_HOST):
             del headers['Authorization']
-

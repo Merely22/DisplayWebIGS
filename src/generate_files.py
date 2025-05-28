@@ -1,51 +1,59 @@
-from io import BytesIO
+import os
 from zipfile import ZipFile
-from src.generate_date import calculate_date
 from pathlib import Path
+from datetime import datetime
+from shutil import make_archive
+from src.generate_date import calculate_date, is_within_range
+from src.authenticator import SessionWithHeaderRedirection
 
-def obtener_vinculos(anio, file_date_format, estacion):
+def obtener_vinculos(anio, doy, estacion):
     urls = []
     for hora in range(24):
-        subcarpeta = f"{hora:02d}"
         for minuto in range(0, 60, 15):
-            h = f"{hora:02d}"
-            m = f"{minuto:02d}"
-            nombre_archivo = f"{estacion}_R_{anio}{file_date_format}{h}{m}_15M_01S_MO.crx.gz"
-            url = f"https://cddis.nasa.gov/archive/gnss/data/highrate/{anio}/{file_date_format}/25d/{subcarpeta}/{nombre_archivo}"
+            nombre_archivo = f"{estacion}_R_{anio}{doy}{hora:02d}{minuto:02d}_15M_01S_MO.crx.gz"
+            url = (f"https://cddis.nasa.gov/archive/gnss/data/highrate/"
+                   f"{anio}/{doy}/25d/{hora:02d}/{nombre_archivo}")
             urls.append((url, nombre_archivo))
     return urls
 
-def download_file_zip(anio, mes, dia, estacion, session, guardar_zip_local=False):
-    file_date_format = calculate_date(anio, mes, dia)
-    vinculos = obtener_vinculos(anio, file_date_format, estacion)
+def download_file_zip(fecha, estacion):
+    hoy = datetime.today()
+    en_rango, dias_diff = is_within_range(fecha)
+    if not en_rango:
+        return False, f"⚠️ Solo se permiten fechas hasta 182 días antes. Su fecha tiene {dias_diff} días.", None
 
-    zip_buffer = BytesIO()
-    fecha_texto = f"{anio}-{mes:02d}-{dia:02d}"
-    nombre_zip = f"{estacion}_{fecha_texto}.zip"
-    archivos_agregados = 0
+    anio, mes, dia = fecha.year, fecha.month, fecha.day
+    doy = str(calculate_date(anio, mes, dia)).zfill(3)
+    carpeta_salida = Path(f"temp_data/{estacion}/{fecha.strftime('%Y-%m-%d')}")
+    carpeta_salida.mkdir(parents=True, exist_ok=True)
 
-    with ZipFile(zip_buffer, 'w') as zipf:
-        for url, nombre_archivo in vinculos:
-            try:
-                response = session.get(url, stream=True, timeout=10)
-                content_type = response.headers.get("Content-Type", "")
-                if response.status_code == 200 and "html" not in content_type.lower():
-                    data = response.content
-                    if data:
-                        zipf.writestr(nombre_archivo, data)
-                        archivos_agregados += 1
-            except Exception as e:
-                print(f"Error al descargar {nombre_archivo}: {e}")
+    session = SessionWithHeaderRedirection()
+    session.headers.update({"User-Agent": "Mozilla/5.0"})
+    vinculos = obtener_vinculos(anio, doy, estacion)
 
-    if archivos_agregados == 0:
-        raise Exception("No se pudo descargar ningún archivo válido para esa fecha.")
+    archivos_descargados = 0
 
-    zip_buffer.seek(0)
+    for url, archivo in vinculos:
+        destino = carpeta_salida / archivo
+        if destino.exists():
+            archivos_descargados += 1
+            continue
+        try:
+            r = session.get(url, stream=True)
+            if "html" in r.headers.get("Content-Type", "") or r.status_code != 200:
+                continue
+            with open(destino, "wb") as f:
+                for chunk in r.iter_content(chunk_size=8192):
+                    f.write(chunk)
+            archivos_descargados += 1
+        except Exception as e:
+            print(f"Error al descargar {archivo}: {e}")
 
-    # ✅ Guardar ZIP local si se desea
-    if guardar_zip_local:
-        output_path = Path(nombre_zip)
-        with open(output_path, "wb") as f:
-            f.write(zip_buffer.getvalue())
+    if archivos_descargados == 0:
+        return False, "⚠️ No se pudo descargar ningún archivo.", None
 
-    return zip_buffer, nombre_zip
+    # Crear archivo zip
+    zip_path = carpeta_salida.parent / f"{fecha.strftime('%Y-%m-%d')}.zip"
+    make_archive(str(zip_path).replace(".zip", ""), 'zip', root_dir=carpeta_salida)
+
+    return True, "✅ Archivos descargados y comprimidos correctamente.", str(zip_path)
