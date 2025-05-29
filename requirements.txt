@@ -3,10 +3,7 @@ requests
 pandas 
 plotly
 streamlit-folium
-datetime
 pytest-shutil
-os-sys
-zipfile
 pathlib
 tempfile
 folium.plugins
