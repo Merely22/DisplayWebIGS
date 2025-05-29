@@ -1,4 +1,5 @@
 import os
+import time
 import shutil
 from zipfile import ZipFile
 from pathlib import Path
@@ -40,13 +41,14 @@ def download_file_zip(fecha, estacion):
     for url, archivo in vinculos:
         destino = carpeta_salida / archivo
         try:
-            r = session.get(url, stream=True)
+            r = session.get(url, stream=True, timeout=30)
             if "html" in r.headers.get("Content-Type", "") or r.status_code != 200:
                 continue
             with open(destino, "wb") as f:
                 for chunk in r.iter_content(chunk_size=8192):
                     f.write(chunk)
             archivos_descargados += 1
+            time.sleep(1.5)    
         except Exception as e:
             print(f"Error al descargar {archivo}: {e}")
 
