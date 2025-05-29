@@ -5,3 +5,4 @@ plotly==6.1.2
 streamlit-folium==0.25.0
 geopy==2.4.1
 streamlit-option-menu==0.3.12  
+dotenv
