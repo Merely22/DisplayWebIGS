@@ -1,6 +1,6 @@
-streamlit 
-requests 
-pandas 
-plotly
-streamlit-folium
-pytest-shutil
+streamlit==1.45.1
+requests==2.32.3
+pandas==2.2.3
+plotly==6.1.2
+streamlit-folium==0.25.0
+geopy==2.4.1
