@@ -2,12 +2,11 @@ streamlit
 requests 
 pandas 
 plotly
-st_folium
+streamlit-folium
 datetime
-shutil 
-os 
+pytest-shutil
+os-sys
 zipfile
 pathlib
 tempfile
-st_folium
 folium.plugins
