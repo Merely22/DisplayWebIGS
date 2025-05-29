@@ -4,6 +4,3 @@ pandas
 plotly
 streamlit-folium
 pytest-shutil
-pathlib
-tempfile
-folium.plugins
