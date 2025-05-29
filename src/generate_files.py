@@ -1,8 +1,9 @@
 import os
+import shutil
 from zipfile import ZipFile
 from pathlib import Path
 from datetime import datetime
-from shutil import make_archive
+from tempfile import TemporaryDirectory
 from src.generate_date import calculate_date, is_within_range
 from src.authenticator import SessionWithHeaderRedirection
 
@@ -17,27 +18,27 @@ def obtener_vinculos(anio, doy, estacion):
     return urls
 
 def download_file_zip(fecha, estacion):
-    hoy = datetime.today()
+    hoy = datetime.utcnow()
     en_rango, dias_diff = is_within_range(fecha)
     if not en_rango:
-        return False, f"⚠️ Solo se permiten fechas hasta 182 días antes. Su fecha tiene {dias_diff} días.", None
+        return False, f"⚠️ Solo se permiten fechas hasta 182 días antes. Su fecha tiene {dias_diff} días.", None, None
 
     anio, mes, dia = fecha.year, fecha.month, fecha.day
     doy = str(calculate_date(anio, mes, dia)).zfill(3)
-    carpeta_salida = Path(f"temp_data/{estacion}/{fecha.strftime('%Y-%m-%d')}")
-    carpeta_salida.mkdir(parents=True, exist_ok=True)
 
     session = SessionWithHeaderRedirection()
     session.headers.update({"User-Agent": "Mozilla/5.0"})
+
     vinculos = obtener_vinculos(anio, doy, estacion)
+
+    temp_dir = TemporaryDirectory()
+    carpeta_salida = Path(temp_dir.name) / f"{estacion}_{fecha.strftime('%Y%m%d')}"
+    carpeta_salida.mkdir(parents=True, exist_ok=True)
 
     archivos_descargados = 0
 
     for url, archivo in vinculos:
         destino = carpeta_salida / archivo
-        if destino.exists():
-            archivos_descargados += 1
-            continue
         try:
             r = session.get(url, stream=True)
             if "html" in r.headers.get("Content-Type", "") or r.status_code != 200:
@@ -50,10 +51,11 @@ def download_file_zip(fecha, estacion):
             print(f"Error al descargar {archivo}: {e}")
 
     if archivos_descargados == 0:
-        return False, "⚠️ No se pudo descargar ningún archivo.", None
+        temp_dir.cleanup()
+        return False, "⚠️ No se pudo descargar ningún archivo.", None, None
 
-    # Crear archivo zip
-    zip_path = carpeta_salida.parent / f"{fecha.strftime('%Y-%m-%d')}.zip"
-    make_archive(str(zip_path).replace(".zip", ""), 'zip', root_dir=carpeta_salida)
+    # Crear el zip dentro del directorio temporal
+    zip_path = carpeta_salida.parent / f"{carpeta_salida.name}.zip"
+    shutil.make_archive(str(zip_path).replace(".zip", ""), 'zip', root_dir=carpeta_salida)
 
-    return True, "✅ Archivos descargados y comprimidos correctamente.", str(zip_path)
+    return True, "✅ Archivos descargados y comprimidos correctamente.", zip_path, temp_dir

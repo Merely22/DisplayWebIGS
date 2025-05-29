@@ -61,15 +61,23 @@ elif selected == "Download files":
         try:
             fecha = datetime(anio, mes, dia)
             with st.spinner("🔄 Descargando archivos desde NASA..."):
-                resultado, mensaje, zip_path = download_file_zip(fecha, estacion)
+                resultado, mensaje, zip_path, temp_dir = download_file_zip(fecha, estacion)
             if not resultado:
                 st.warning(mensaje)
             else:
                 st.success(mensaje)
                 with open(zip_path, "rb") as f:
-                    st.download_button("📦 Descargar archivo ZIP", f, file_name=os.path.basename(zip_path))
+                    st.download_button(
+                        "📦 Descargar archivo ZIP",
+                        f,
+                        file_name=os.path.basename(zip_path),
+                        mime="application/zip"
+                    )
+                # Eliminar archivos temporales después de mostrar el botón
+                temp_dir.cleanup()
         except ValueError:
             st.error("Fecha inválida. Verifica el día, mes y año.")
+
 
 
 # =======================
