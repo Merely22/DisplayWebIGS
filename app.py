@@ -22,7 +22,7 @@ with st.sidebar:
 
 # Load station data
 data_path = "igs_stations.csv"
-df = pd.read_csv(data_path, sep=";", header=0)
+df = pd.read_csv(data_path, sep=",", header=0)
 
 # =======================
 # 1️⃣ Estaciones Cercanas
@@ -56,12 +56,19 @@ elif selected == "Download files":
         mes = st.number_input("Mes", value=5, min_value=1, max_value=12, step=1)
     with col3:
         anio = st.number_input("Año", value=2025, min_value=2023, step=1)
+    col4, col5 = st.columns(2)
+    with col4:
+        hora_inicio=st.number_input("Hora inicial (UTC): ", value=0, min_value=0, max_value=23, step=1)
+    with col5:
+        hora_fin=st.number_input("Hora final (UTC): ", value=24, min_value=0, max_value=24, step=1)
 
     if st.button("Descargar archivos"):
+        if hora_fin<=hora_inicio:
+            st.warning("Su hora final debe ser mayor que su hora inicial")
         try:
             fecha = datetime(anio, mes, dia)
             with st.spinner("🔄 Descargando archivos desde NASA..."):
-                resultado, mensaje, zip_path, temp_dir = download_file_zip(fecha, estacion)
+                resultado, mensaje, zip_path, temp_dir = download_file_zip(fecha, estacion, hora_inicio, hora_fin)
             if not resultado:
                 st.warning(mensaje)
             else:

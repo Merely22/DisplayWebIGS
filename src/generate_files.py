@@ -8,9 +8,9 @@ from tempfile import TemporaryDirectory
 from src.generate_date import calculate_date, is_within_range
 from src.authenticator import SessionWithHeaderRedirection
 
-def obtener_vinculos(anio, doy, estacion):
+def obtener_vinculos(anio, doy, estacion, hora_inicio=0, hora_fin=23):
     urls = []
-    for hora in range(24):
+    for hora in range(hora_inicio, hora_fin):
         for minuto in range(0, 60, 15):
             nombre_archivo = f"{estacion}_R_{anio}{doy}{hora:02d}{minuto:02d}_15M_01S_MO.crx.gz"
             url = (f"https://cddis.nasa.gov/archive/gnss/data/highrate/"
@@ -18,7 +18,7 @@ def obtener_vinculos(anio, doy, estacion):
             urls.append((url, nombre_archivo))
     return urls
 
-def download_file_zip(fecha, estacion):
+def download_file_zip(fecha, estacion, hora_inicio=0, hora_fin=23):
     hoy = datetime.utcnow()
     en_rango, dias_diff = is_within_range(fecha)
     if not en_rango:
@@ -30,7 +30,7 @@ def download_file_zip(fecha, estacion):
     session = SessionWithHeaderRedirection()
     session.headers.update({"User-Agent": "Mozilla/5.0"})
 
-    vinculos = obtener_vinculos(anio, doy, estacion)
+    vinculos = obtener_vinculos(anio, doy, estacion, hora_inicio, hora_fin)
 
     temp_dir = TemporaryDirectory()
     carpeta_salida = Path(temp_dir.name) / f"{estacion}_{fecha.strftime('%Y%m%d')}"
