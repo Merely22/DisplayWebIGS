@@ -3,23 +3,23 @@ import folium
 from folium.plugins import MarkerCluster
 
 def display_map(ruta_csv, user_coords=None, nearest_stations=[]):
-    df = pd.read_csv(ruta_csv, sep=";", header=0)
+    df = pd.read_csv(ruta_csv, sep=",", header=0)
     df.columns = df.columns.str.strip().str.lower()
 
-    centro = user_coords if user_coords else [df['latitude'].mean(), df['longitude'].mean()]
+    centro = user_coords if user_coords else [df['Latitude'].mean(), df['Longitude'].mean()]
     mapa = folium.Map(location=centro, zoom_start=5)
     marker_cluster = MarkerCluster().add_to(mapa)
 
     for _, row in df.iterrows():
-        Lat = row['latitude']
-        Lon = row['longitude']
-        Estacion = row['site name']
-        Elevacion = row.get('height(m)', 'Unknown')
-        Region = row.get('country/region', 'Unknown')
-        Last_data = row.get('last data','Unknown')
-        Receptor = row.get('receiver', 'Unknown')
-        Antena = row.get('antenna', 'Unknown')
-        Sistema = row.get('satellite system', 'Unknown')
+        Lat = row['Latitude']
+        Lon = row['Longitude']
+        Estacion = row['Site Name']
+        Elevacion = row.get('Height (m)', 'Unknown')
+        Region = row.get('Country/Region', 'Unknown')
+        Last_data = row.get('Last Data','Unknown')
+        Receptor = row.get('Receiver', 'Unknown')
+        Antena = row.get('Antenna', 'Unknown')
+        Sistema = row.get('Satellite System', 'Unknown')
         color = "green" if Last_data != 'Unknown' else "red"
         popup_html = f"""
         <b>{Estacion}</b><br>
