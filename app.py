@@ -23,6 +23,7 @@ with st.sidebar:
 # Load station data
 data_path = "igs_stations.csv"
 df = pd.read_csv(data_path, sep=",", header=0)
+df.columns = df.columns.str.strip().str.lower()
 
 # =======================
 # 1️⃣ Estaciones Cercanas
@@ -38,7 +39,8 @@ if selected == "Station nearest":
             estaciones_cercanas = find_nearest_station(data_path, lat, lon)
             st.success("Showing the 2 nearest stations on the map:")
             st.dataframe(estaciones_cercanas)
-            mapa = display_map(data_path, user_coords=(lat, lon), nearest_stations=estaciones_cercanas["Site Name"].tolist())
+            mapa = display_map(data_path, user_coords=(lat, lon), 
+                               nearest_stations=estaciones_cercanas["site name"].tolist())
             st.components.v1.html(mapa._repr_html_(), height=600)
 
 # =======================
@@ -47,7 +49,7 @@ if selected == "Station nearest":
 elif selected == "Download files":
     st.title("📥 Descarga de Archivos GNSS")
     
-    estacion = st.selectbox("Estación", df["Site Name"].unique())
+    estacion = st.selectbox("Estación", df["site name"].unique())
     
     col1, col2, col3 = st.columns(3)
     with col1:

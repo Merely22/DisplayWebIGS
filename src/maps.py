@@ -3,9 +3,9 @@ import folium
 from folium.plugins import MarkerCluster
 
 def display_map(ruta_csv, user_coords=None, nearest_stations=[]):
-    df = pd.read_csv(ruta_csv, sep=";", header=0)
+    df = pd.read_csv(ruta_csv, sep=",", header=0)
     df.columns = df.columns.str.strip().str.lower()
-
+    #print(df.columns)
     centro = user_coords if user_coords else [df['latitude'].mean(), df['longitude'].mean()]
     mapa = folium.Map(location=centro, zoom_start=5)
     marker_cluster = MarkerCluster().add_to(mapa)
