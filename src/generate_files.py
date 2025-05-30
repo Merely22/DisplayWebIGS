@@ -8,7 +8,7 @@ from tempfile import TemporaryDirectory
 from src.generate_date import calculate_date, is_within_range
 from src.authenticator import SessionWithHeaderRedirection
 
-def obtener_vinculos(anio, doy, estacion, hora_inicio=0, hora_fin=23):
+def obtener_vinculos(anio, doy, estacion, hora_inicio=0, hora_fin=24):
     urls = []
     for hora in range(hora_inicio, hora_fin):
         for minuto in range(0, 60, 15):
@@ -18,7 +18,7 @@ def obtener_vinculos(anio, doy, estacion, hora_inicio=0, hora_fin=23):
             urls.append((url, nombre_archivo))
     return urls
 
-def download_file_zip(fecha, estacion, hora_inicio=0, hora_fin=23):
+def download_file_zip(fecha, estacion, hora_inicio=0, hora_fin=24):
     hoy = datetime.utcnow()
     en_rango, dias_diff = is_within_range(fecha)
     if not en_rango:
