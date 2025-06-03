@@ -1,46 +1,40 @@
 def main():
-    import streamlit as st 
-    import requests
-    from generate_date import date_today
-    from generate_files import load_stations, generate_name_file
+    import streamlit as st
+    from NGS.generate_date import fecha_a_doy
+    from NGS.generate_files import (
+        cargar_estaciones_local,
+        estaciones_mas_cercanas,
+        verificar_disponibilidad_rinex
+    )
 
-    df_estaciones = load_stations()
+    st.title("Descarga de archivos RINEX desde NOAA CORS")
 
-    # 2. Pedir coordenadas del usuario
-    lat = float(input(" Ingrese su latitud (ej. 34.05): "))
-    lon = float(input(" Ingrese su longitud (ej. -118.25): "))
+    # Entrada de fecha y coordenadas
+    col1, col2, col3 = st.columns(3)
+    with col1:
+        fecha = st.date_input("Selecciona una fecha")
+    with col2:
+        lat = st.number_input("Latitud", format="%.6f")
+    with col3:
+        lon = st.number_input("Longitud", format="%.6f")
 
-    # 3. Pedir fecha
-    fecha = input(" Ingrese la fecha (YYYY-MM-DD): ")
-    anio, doy = date_today(fecha)
+    if st.button("Buscar estaciones y verificar archivos"):
+        with st.spinner("Procesando..."):
+            try:
+                df = cargar_estaciones_local()
+                anio, doy = fecha_a_doy(str(fecha))
+                df_cercanas = estaciones_mas_cercanas(df, lat, lon)
+                df_resultado = verificar_disponibilidad_rinex(df_cercanas, anio, doy)
 
-    # 4. Buscar estaciones cercanas y verificar archivos
-    #df_cercanas = estaciones_mas_cercanas(df_estaciones, lat, lon)
-    #df_cercanas = verificar_disponibilidad_rinex(df_cercanas, anio, doy, tipo='obs')
+                st.subheader("Estaciones más cercanas y disponibilidad")
+                st.dataframe(df_resultado[['SITEID', 'Latitude', 'Longitude', 'Distancia_km', 'Disponible', 'URL']])
+                
+                for _, row in df_resultado.iterrows():
+                    if row['Disponible'] == "SI":
+                        st.markdown(f"[Descargar {row['SITEID']}]({row['URL']})")
 
-    # 5. Mostrar tabla
-    print("\n🧭 Estaciones más cercanas:")
-    #print(df_cercanas[['SITEID', 'Latitude', 'Longitude', 'Distancia_km', 'SAMPLING', 'AGENCY', 'STATUS', 'Disponible']].to_string(index=False))
-
-    # 6. Selección válida de estación disponible
-    while True:
-        siteid = input("\n Ingrese el SITEID de una estación disponible (o escriba 'salir' para cancelar): ").strip().upper()
-
-        if siteid.lower() == 'salir':
-            print(" Operación cancelada por el usuario.")
-            break
-
-        fila_sel = df_cercanas[df_cercanas['SITEID'] == siteid]
-
-        if fila_sel.empty:
-            print(" El SITEID ingresado no está en la lista mostrada. Intente nuevamente.")
-        elif fila_sel.iloc[0]['Disponible'] != "SI":
-            print(f" El archivo de {siteid} para el {fecha} NO está disponible. Intente con otro.")
-        else:
-            url = fila_sel.iloc[0]['URL']
-            descargar_archivo_rinex(url)
-            print(f" ✔️ Archivo de {siteid} para el {fecha} descargado exitosamente.")
-            break
+            except Exception as e:
+                st.error(f"Ocurrió un error: {e}")
 
 
 if __name__ == "__main__":

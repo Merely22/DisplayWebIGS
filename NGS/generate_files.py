@@ -1,9 +1,8 @@
-import requests
 import pandas as pd
-from datetime import datetime
+import requests
 from geopy.distance import geodesic
 
-def load_stations(ruta_csv="data/NOAACORSNetwork.csv"):
+def cargar_estaciones_local(ruta_csv="data/NOAACORSNetwork.csv"):
     df = pd.read_csv(ruta_csv, sep=",", encoding="utf-8-sig", on_bad_lines='warn')
     if 'x' in df.columns and 'y' in df.columns:
         df = df[df['x'].str.contains(",", na=False) & df['y'].str.contains(",", na=False)].copy()
@@ -16,8 +15,12 @@ def load_stations(ruta_csv="data/NOAACORSNetwork.csv"):
         raise ValueError("No se encontraron columnas válidas de coordenadas.")
     return df
 
+def estaciones_mas_cercanas(df, lat_usuario, lon_usuario, n=4):
+    punto_usuario = (lat_usuario, lon_usuario)
+    df['Distancia_km'] = df.apply(lambda row: geodesic(punto_usuario, (row['Latitude'], row['Longitude'])).kilometers, axis=1)
+    return df.sort_values('Distancia_km').head(n).copy()
 
-def generate_name_file(siteid, anio, doy, tipo='obs'):
+def generar_nombre_archivo(siteid, anio, doy, tipo='obs'):
     siteid = siteid.lower()
     yy = str(anio)[-2:]
     doy_str = str(doy).zfill(3)
@@ -46,7 +49,7 @@ def verificar_disponibilidad_rinex(df_cercanas, anio, doy, tipo='obs'):
 
     for _, row in df_cercanas.iterrows():
         siteid = row['SITEID'].lower()
-        nombre_archivo = generate_name_file(siteid, anio, doy, tipo)
+        nombre_archivo = generar_nombre_archivo(siteid, anio, doy, tipo)
         if nombre_archivo in contenido:
             disponibles.append("SI")
             url = f"https://noaa-cors-pds.s3.amazonaws.com/rinex/{anio}/{doy_str}/{siteid}/{nombre_archivo}"
@@ -58,15 +61,3 @@ def verificar_disponibilidad_rinex(df_cercanas, anio, doy, tipo='obs'):
     df_cercanas['Disponible'] = disponibles
     df_cercanas['URL'] = urls
     return df_cercanas
-
-
-
-def descargar_archivo_rinex(url):
-    try:
-        nombre_archivo = url.split("/")[-1]
-        r = requests.get(url)
-        with open(nombre_archivo, "wb") as f:
-            f.write(r.content)
-    except Exception as e:
-        print(f" Error al descargar: {e}")
-
