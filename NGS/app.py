@@ -14,9 +14,9 @@ def main():
     with col1:
         fecha = st.date_input("Selecciona una fecha")
     with col2:
-        lat = st.number_input("Latitud", format="%.6f")
+        lat = st.number_input("Latitud",value= 41.369166, format="%.6f")
     with col3:
-        lon = st.number_input("Longitud", format="%.6f")
+        lon = st.number_input("Longitud",value= -101.927889, format="%.6f")
 
     if st.button("Buscar estaciones y verificar archivos"):
         with st.spinner("Procesando..."):

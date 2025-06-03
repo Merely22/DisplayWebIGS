@@ -2,7 +2,6 @@ import streamlit as st
 import pandas as pd
 from nearest_station import find_nearest_station
 from maps import display_map
-from lmaps import display_map_dual
 
 # Set up
 st.set_page_config(page_title="Metta - GNSS Data Collection", layout="wide", page_icon= "🛰️")
