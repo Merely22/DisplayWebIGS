@@ -24,10 +24,16 @@ def main():
                 df = cargar_estaciones_local()
                 anio, doy = fecha_a_doy(str(fecha))
                 df_cercanas = estaciones_mas_cercanas(df, lat, lon)
+                estaciones_seleccionadas = st.multiselect(
+                    "Estaciones más cercanas (elige hasta 2):",
+                    df_cercanas['SITEID'].tolist(),
+                    default=df_cercanas['SITEID'].tolist()[:2],
+                    max_selections=2
+                )
                 df_resultado = verificar_disponibilidad_rinex(df_cercanas, anio, doy)
 
                 st.subheader("Estaciones más cercanas y disponibilidad")
-                st.dataframe(df_resultado[['SITEID', 'Latitude', 'Longitude', 'Distancia_km', 'Disponible', 'URL']])
+                st.dataframe(df_resultado[['SITEID', 'Latitude', 'Longitude', 'Distancia_km']])
                 
                 for _, row in df_resultado.iterrows():
                     if row['Disponible'] == "SI":

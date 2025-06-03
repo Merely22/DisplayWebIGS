@@ -34,7 +34,7 @@ if opcion == "INICIO":
             estaciones_cercanas = find_nearest_station(data_path, lat, lon)
             st.success("Showing the 2 nearest stations on the map:")
             st.dataframe(estaciones_cercanas)
-            mapa = display_map_dual(data_path, user_coords=(lat, lon), 
+            mapa = display_map(data_path, user_coords=(lat, lon), 
                                nearest_stations=estaciones_cercanas["site name"].tolist())
             st.components.v1.html(mapa._repr_html_(), height=600)
 

@@ -15,7 +15,7 @@ def cargar_estaciones_local(ruta_csv="data/NOAACORSNetwork.csv"):
         raise ValueError("No se encontraron columnas válidas de coordenadas.")
     return df
 
-def estaciones_mas_cercanas(df, lat_usuario, lon_usuario, n=4):
+def estaciones_mas_cercanas(df, lat_usuario, lon_usuario, n=2):
     punto_usuario = (lat_usuario, lon_usuario)
     df['Distancia_km'] = df.apply(lambda row: geodesic(punto_usuario, (row['Latitude'], row['Longitude'])).kilometers, axis=1)
     return df.sort_values('Distancia_km').head(n).copy()

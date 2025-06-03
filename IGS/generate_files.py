@@ -1,14 +1,30 @@
-import os
 import time
 import shutil
-from zipfile import ZipFile
 from pathlib import Path
 from datetime import datetime
+from zipfile import ZipFile
 from tempfile import TemporaryDirectory
-from IGS.generate_date import calculate_date, is_within_range
+from IGS.generate_date import calculate_date, is_within_range 
 from IGS.authenticator import SessionWithHeaderRedirection
+from geopy.distance import geodesic
+import pandas as pd
 
-def obtener_vinculos(anio, doy, estacion, hora_inicio=0, hora_fin=23):
+# Load station data
+data_path = "data/igs_stations.csv"
+df = pd.read_csv(data_path, sep=",", header=0)
+df.columns = df.columns.str.strip().str.lower()
+df.rename(columns={"Latitude": "latitud", "Longitude": "longitud", "Site Name": "estacion"}, inplace=True)
+
+def estaciones_mas_cercanas(latitud, longitud, df, top_n=2):
+    ubicacion_usuario = (latitud, longitud)
+    df["distancia_km"] = df.apply(
+        lambda row: geodesic(ubicacion_usuario, (row["latitud"], row["longitud"])).kilometers,
+        axis=1
+    )
+    df_ordenado = df.sort_values("distancia_km")
+    return df_ordenado.head(top_n)
+
+def obtener_vinculos(anio: int, doy: str, estacion: str, hora_inicio: int = 0, hora_fin: int = 23) -> list:
     urls = []
     for hora in range(hora_inicio, hora_fin):
         for minuto in range(0, 60, 15):
@@ -18,8 +34,8 @@ def obtener_vinculos(anio, doy, estacion, hora_inicio=0, hora_fin=23):
             urls.append((url, nombre_archivo))
     return urls
 
-def download_file_zip(fecha, estacion, hora_inicio=0, hora_fin=23):
-    hoy = datetime.utcnow()
+def download_file_zip(fecha: datetime, estacion: str, hora_inicio: int = 0, hora_fin: int = 23) -> tuple:
+
     en_rango, dias_diff = is_within_range(fecha)
     if not en_rango:
         return False, f"⚠️ Solo se permiten fechas hasta 182 días antes. Su fecha tiene {dias_diff} días.", None, None
@@ -29,13 +45,11 @@ def download_file_zip(fecha, estacion, hora_inicio=0, hora_fin=23):
 
     session = SessionWithHeaderRedirection()
     session.headers.update({"User-Agent": "Mozilla/5.0"})
-
     vinculos = obtener_vinculos(anio, doy, estacion, hora_inicio, hora_fin)
 
     temp_dir = TemporaryDirectory()
     carpeta_salida = Path(temp_dir.name) / f"{estacion}_{fecha.strftime('%Y%m%d')}"
     carpeta_salida.mkdir(parents=True, exist_ok=True)
-
     archivos_descargados = 0
 
     for url, archivo in vinculos:
@@ -48,16 +62,15 @@ def download_file_zip(fecha, estacion, hora_inicio=0, hora_fin=23):
                 for chunk in r.iter_content(chunk_size=8192):
                     f.write(chunk)
             archivos_descargados += 1
-            time.sleep(1.5)    
-        except Exception as e:
-            print(f"Error al descargar {archivo}: {e}")
+            time.sleep(1.5)
+        except Exception:
+            continue  # Puedes agregar logging.warning si quieres
 
     if archivos_descargados == 0:
         temp_dir.cleanup()
         return False, "⚠️ No se pudo descargar ningún archivo.", None, None
 
-    # Crear el zip dentro del directorio temporal
-    zip_path = carpeta_salida.parent / f"{carpeta_salida.name}.zip"
+    zip_path = Path(temp_dir.name) / f"{carpeta_salida.name}.zip"
     shutil.make_archive(str(zip_path).replace(".zip", ""), 'zip', root_dir=carpeta_salida)
 
-    return True, "✅ Archivos descargados y comprimidos correctamente.", zip_path, temp_dir
+    return True, "✅ Archivos descargados y comprimidos", zip_path, temp_dir
