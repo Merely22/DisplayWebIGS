@@ -1,6 +1,5 @@
 import streamlit as st
 import pandas as pd
-from nearest_station import find_nearest_station
 from maps import display_map
 
 # Set up
@@ -13,35 +12,13 @@ opcion = st.sidebar.selectbox("Selecciona una herramienta:", [
     "NOAA National Geodetic Survey (NGS)"
 ])
 
-# Load station data
-data_path = "data/igs_stations.csv"
-df = pd.read_csv(data_path, sep=",", header=0)
-df.columns = df.columns.str.strip().str.lower()
-
 if opcion == "INICIO":
-    st.title("Find the nearest station ")
-    data_path = "data/igs_stations.csv"
-    df = pd.read_csv(data_path, sep=",", header=0)
-    df.columns = df.columns.str.strip().str.lower()
+    # Define rutas a los CSVs locales
+    path_igs = "data/igs_stations.csv"
+    path_noaa = "data/noaa_cors.csv"
 
-
-    lat = st.number_input("Ingrese latitud", format="%.6f")
-    lon = st.number_input("Ingrese longitud", format="%.6f")
-    if st.button("Find and display on map"):
-        if df.empty:
-            st.error("Station data not loaded.")
-        else:
-            estaciones_cercanas = find_nearest_station(data_path, lat, lon)
-            st.success("Showing the 2 nearest stations on the map:")
-            st.dataframe(estaciones_cercanas)
-            mapa = display_map(data_path, user_coords=(lat, lon), 
-                               nearest_stations=estaciones_cercanas["site name"].tolist())
-            st.components.v1.html(mapa._repr_html_(), height=600)
-
-    st.title("🗺️ Mapa de Estaciones GNSS")
-    mapa = display_map(data_path)
-    st.components.v1.html(mapa._repr_html_(), height=600)
-
+    # Llama a la función de visualización completa
+    display_map(path_igs, path_noaa)
 
 elif opcion == "International GNSS Service (IGS)":
     from IGS import app as igs_app
