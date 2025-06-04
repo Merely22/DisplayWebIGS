@@ -66,7 +66,7 @@ elif selected == "Download files":
 
         # Validar disponibilidad
         disponible, mensaje_dispo = verificar_disponibilidad_summary(estacion, fecha, df_summary, df)
-        st.markdown(f"**📝 Validación Summary:** {mensaje_dispo}")
+        st.markdown(f"**📝 Validación: ** {mensaje_dispo}")
         rinex_version = obtener_formato_rinex(estacion, df_summary)
         st.session_state["rinex_version"] = rinex_version if disponible else None
     except Exception as e:
@@ -84,7 +84,7 @@ elif selected == "Download files":
         try:
             fecha = datetime(anio, mes, dia)
             with st.spinner("🔄 Descargando archivos desde NASA..."):
-                resultado, mensaje, zip_path, temp_dir = download_file_zip(fecha, estacion, hora_inicio, hora_fin)
+                resultado, mensaje, zip_path, temp_dir = download_file_zip(fecha, estacion, hora_inicio, hora_fin, rinex_version=rinex_version)
             if not resultado:
                 st.warning(mensaje)
             else:
