@@ -11,7 +11,7 @@ from src.generate_date import calculate_date, is_within_range
 from src.authenticator import SessionWithHeaderRedirection
 from src.sumary_checker import cargar_estaciones_tipo_S
 
-RUTA_CRX2RNX = Path("H:/Obtención de IGS/DisplayWebIGS/src/CRX2RNX.exe")
+RUTA_CRX2RNX = Path("/CRX2RNX.exe")#usar "./CRX2RNX" en linux
 estaciones_tipo_S = cargar_estaciones_tipo_S()
 
 def obtener_vinculos(anio, doy, estacion, hora_inicio=0, hora_fin=24, rinex_version="3"):
