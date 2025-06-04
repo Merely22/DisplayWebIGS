@@ -26,18 +26,18 @@ def main():
                 df_cercanas = estaciones_mas_cercanas(df, lat, lon)
                 estaciones_seleccionadas = st.multiselect(
                     "Estaciones más cercanas (elige hasta 2):",
-                    df_cercanas['SITEID'].tolist(),
-                    default=df_cercanas['SITEID'].tolist()[:2],
+                    df_cercanas['station'].tolist(),
+                    default=df_cercanas['station'].tolist()[:2],
                     max_selections=2
                 )
                 df_resultado = verificar_disponibilidad_rinex(df_cercanas, anio, doy)
 
                 st.subheader("Estaciones más cercanas y disponibilidad")
-                st.dataframe(df_resultado[['SITEID', 'Latitude', 'Longitude', 'Distancia_km']])
+                st.dataframe(df_resultado[['station', 'latitud', 'longitud', 'Distancia_km', 'Disponible']])
                 
                 for _, row in df_resultado.iterrows():
                     if row['Disponible'] == "SI":
-                        st.markdown(f"[Descargar {row['SITEID']}]({row['URL']})")
+                        st.markdown(f"[Descargar {row['station']}]({row['URL']})")
 
             except Exception as e:
                 st.error(f"Ocurrió un error: {e}")
