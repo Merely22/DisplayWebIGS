@@ -4,101 +4,123 @@ from folium.plugins import MarkerCluster
 from geopy.distance import geodesic
 from streamlit_folium import st_folium
 import streamlit as st
-from folium import Element
 
 def display_map(path_igs, path_noaa):
     st.title("🌍 Visualización de Estaciones GNSS")
 
-    df1 = pd.read_csv(path_igs)
-    df2 = pd.read_csv(path_noaa)
+    # --- Carga y preparación de datos (solo se hace una vez) ---
+    @st.cache_data
+    def load_data(path_igs, path_noaa):
+        df1 = pd.read_csv(path_igs)
+        df2 = pd.read_csv(path_noaa)
 
-    df1.columns = df1.columns.str.lower().str.strip()
-    df2.columns = df2.columns.str.lower().str.strip()
+        df1.columns = df1.columns.str.lower().str.strip()
+        df2.columns = df2.columns.str.lower().str.strip()
 
-    # Entrada de coordenadas
-    st.markdown("### 📍 Coordenadas de búsqueda")
-    user_lat = st.number_input("Latitud", value=49.877017, format="%.6f")
-    user_lon = st.number_input("Longitud", value=-97.047440, format="%.6f")
-    user_coords = (user_lat, user_lon)
+        df1 = df1.rename(columns={"site name": "station", "latitude": "lat", "longitude": "lon"})
+        df2 = df2.rename(columns={"siteid": "station", "y": "lat", "x": "lon"})
+        
+        df1["source"] = "IGS Stations GNSS"
+        df2["source"] = "NOAA Stations GNSS"
 
-    # Preparar columnas comunes
-    df1 = df1.rename(columns={"site name": "station","latitude": "lat", "longitude": "lon"})
-    df2 = df2.rename(columns={"siteid": "station","y": "lat", "x": "lon"})
-    df1["source"] = "IGS Staions GNSS"
-    df2["source"] = "NOAA Staions GNSS"
+        df_all = pd.concat([df1, df2], ignore_index=True).dropna(subset=['lat', 'lon'])
+        
+        df_all["popup"] = df_all.apply(
+            lambda row: f"<b>Estación:</b> {row['station']}<br>"
+                        f"<b>Fuente:</b> {row['source']}<br>"
+                        f"<b>Lat:</b> {row['lat']:.4f}, <b>Lon:</b> {row['lon']:.4f}",
+            axis=1
+        )
+        return df_all
 
-    df1["popup"] = df1[["station", "lat", "lon"]].astype(str).agg("<br>".join, axis=1)
-    df2["popup"] = df2[["station", "lat", "lon"]].astype(str).agg("<br>".join, axis=1)
+    df_all = load_data(path_igs, path_noaa)
 
-    df_all = pd.concat([df1, df2], ignore_index=True)
-    df_all["distancia"] = df_all.apply(lambda row: geodesic(user_coords, (row["lat"], row["lon"])).km, axis=1)
+    # --- Interfaz de usuario ---
+    #st.markdown("### 📍 Ingresa tus coordenadas")
+    col1, col2 = st.columns(2)
+    with col1:
+        # Usamos session_state para recordar las coordenadas
+        user_lat = st.number_input("Latitud", value=st.session_state.get('user_lat', 4.60971), format="%.6f", key="user_lat")
+    with col2:
+        user_lon = st.number_input("Longitud", value=st.session_state.get('user_lon', -74.08175), format="%.6f", key="user_lon")
 
-    estaciones_cercanas = df_all.nsmallest(5, "distancia")
-    st.markdown("### 📋 Estaciones más cercanas")
-    st.dataframe(estaciones_cercanas[["station", "lat", "lon", "distancia"]])
+    # Botón para activar la búsqueda y el zoom
+    search_button = st.button("Buscar estaciones más cercanas")
 
-    # Mapa centrado inicialmente entre Sudamérica y Europa
-    centro = user_coords if user_coords else [df_all['lat'].mean(), df_all['lon'].mean()]
-    m = folium.Map(location=centro, zoom_start=5)
-    #m = folium.Map(location=[0, -30], zoom_start=2)
+    # --- Creación del mapa base ---
+    # Centrado general al inicio
+    m = folium.Map(location=[20, 0], zoom_start=2)
 
-    capa_csv1 = folium.FeatureGroup(name="IGS Stations GNSS", show=True)
-    capa_csv2 = folium.FeatureGroup(name="NOAA Stations GNSS", show=True)
-    capa_cercanas = folium.FeatureGroup(name="Estaciones Cercanas", show=True)
+    # --- CORRECCIÓN 1: Usar MarkerCluster para un rendimiento óptimo ---
+    # Creamos un cluster para cada fuente de datos
+    cluster_igs = MarkerCluster(name="IGS Stations").add_to(m)
+    cluster_noaa = MarkerCluster(name="NOAA Stations").add_to(m)
 
-    for _, row in df1.iterrows():
+    # Añadimos los puntos a sus respectivos clusters
+    for _, row in df_all[df_all['source'] == "IGS Stations"].iterrows():
         folium.CircleMarker(
-            location=(row["lat"], row["lon"]),
-            radius=5,
-            color="blue",
-            fill=True,
-            fill_color="blue",
-            fill_opacity=0.6,
-            popup=folium.Popup(row["popup"], max_width=300)).add_to(capa_csv1)
+            location=(row["lat"], row["lon"]), radius=5, color="blue", fill=True, fill_color="blue",
+            fill_opacity=0.6, popup=folium.Popup(row["popup"], max_width=300)
+        ).add_to(cluster_igs)
 
-    for _, row in df2.iterrows():
+    for _, row in df_all[df_all['source'] == "NOAA Stations"].iterrows():
         folium.CircleMarker(
-            location=(row["lat"], row["lon"]),
-            radius=5,
-            color="green",
-            fill=True,
-            fill_color="green",
-            fill_opacity=0.6,
-            popup=folium.Popup(row["popup"], max_width=300)
-        ).add_to(capa_csv2)
+            location=(row["lat"], row["lon"]), radius=5, color="green", fill=True, fill_color="green",
+            fill_opacity=0.6, popup=folium.Popup(row["popup"], max_width=300)
+        ).add_to(cluster_noaa)
 
-    for _, row in estaciones_cercanas.iterrows():
+    # --- Lógica de búsqueda y zoom (se activa con el botón) ---
+    if search_button:
+        user_coords = (user_lat, user_lon)
+        
+        # Calcular distancias y encontrar las 5 más cercanas
+        df_all["distancia"] = df_all.apply(lambda row: geodesic(user_coords, (row["lat"], row["lon"])).km, axis=1)
+        estaciones_cercanas = df_all.nsmallest(5, "distancia")
+
+        st.markdown("### 📋 Las 5 estaciones más cercanas")
+        st.dataframe(estaciones_cercanas[["station", "lat", "lon", "distancia", "source"]])
+
+        # Capa para los marcadores rojos (cercanos)
+        capa_cercanas = folium.FeatureGroup(name="Estaciones Cercanas", show=True).add_to(m)
+
+        # Añadir marcador de usuario
         folium.Marker(
-            location=(row["lat"], row["lon"]),
-            icon=folium.Icon(color="red"),
-            popup=folium.Popup(f"Distancia: {row['distancia']:.2f} km<br>{row['popup']}", max_width=300)
+            user_coords,
+            icon=folium.Icon(color='purple', icon='star'),
+            popup="Tu ubicación"
         ).add_to(capa_cercanas)
 
-    folium.Marker(
-        user_coords,
-        icon=folium.Icon(color='purple', icon='&#xf041'),
-        popup="Ubicación del usuario"
-    ).add_to(m)
+        # Añadir marcadores de estaciones cercanas
+        for _, row in estaciones_cercanas.iterrows():
+            folium.Marker(
+                location=(row["lat"], row["lon"]),
+                icon=folium.Icon(color="red", icon="tower", prefix='fa'),
+                popup=folium.Popup(f"<b>{row['station']}</b><br>Distancia: {row['distancia']:.2f} km", max_width=300)
+            ).add_to(capa_cercanas)
 
-    # Agregar leyenda
+        # --- CORRECCIÓN 2: Zoom automático y dinámico ---
+        # Creamos una lista de puntos para ajustar el mapa
+        puntos_para_zoom = estaciones_cercanas[['lat', 'lon']].values.tolist()
+        puntos_para_zoom.append(user_coords)
+        m.fit_bounds(puntos_para_zoom, padding=(50, 50))
+
+    # --- CORRECCIÓN 3: Leyenda bien posicionada ---
     legend_html = """
-    <div style='position: fixed;'color: black'; bottom: 50px; left: 50px; z-index: 9999; 
-                background-color: white; padding: 10px; border:2px solid gray;'>
+    <div style='position: absolute; top: 10px; right: 10px; width: 180px;
+                background-color: rgba(255, 255, 255, 0.8); z-index: 1000; 
+                padding: 10px; border: 1px solid grey; border-radius: 5px; font-size: 14px;'>
         <b>🗺️ Leyenda</b><br>
-        🔵 Estaciones IGS  GNSS<br>
-        🟢 Estaciones NOAA  GNSS<br>
-        🔴 Las 5 más cercanas<br>
-        ⭐ Tu ubicación
+        <i class="fa fa-circle" style="color:blue"></i> IGS Stations GNSS<br>
+        <i class="fa fa-circle" style="color:green"></i> NOAA Stations GNSS<br>
+        <i class="fa fa-map-marker" style="color:red"></i> 5 más cercanas<br>
+        <i class="fa fa-star" style="color:purple"></i> Tu ubicación
     </div>
     """
     m.get_root().html.add_child(folium.Element(legend_html))
 
-    m.add_child(capa_csv1)
-    m.add_child(capa_csv2)
-    m.add_child(capa_cercanas)
+    # Añadir control de capas
     folium.LayerControl().add_to(m)
 
+    # --- Renderizar el mapa ---
     st.markdown("### 🌐 Mapa interactivo")
-    st_folium(m, width=900, height=600)
-
-
+    st_folium(m, width=900, height=600, returned_objects=[])

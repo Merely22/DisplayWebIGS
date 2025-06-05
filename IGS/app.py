@@ -4,121 +4,140 @@ from datetime import datetime, timezone
 import os
 from IGS.generate_files import download_file_zip, estaciones_mas_cercanas
 from IGS.components import mostrar_info_estacion_resumida
-from IGS.generate_date import fecha_a_doy
 from IGS.sumary_checker import descargar_summary, parsear_summary, verificar_disponibilidad_summary, obtener_formato_rinex
 
 def main():
-    st.title("📥 Descarga de Archivos GNSS")
+    st.title("📥 Descarga de Archivos - International GNSS Service (IGS)")
 
-    # --- Carga inicial de datos ---
-    data_path = "data/igs_stations.csv"
-    try:
-        df = pd.read_csv(data_path, sep=",", header=0)
-        df.columns = df.columns.str.strip().str.lower()
-        df.rename(columns={"latitude": "latitud", "longitude": "longitud", "site name": "estacion"}, inplace=True)
-    except FileNotFoundError:
-        st.error(f"Error: No se encontró el archivo de estaciones en la ruta: {data_path}")
-        st.info("Asegúrate de que la carpeta 'data' y el archivo 'igs_stations.csv' estén en el lugar correcto.")
-        return # Detiene la ejecución si el archivo no existe
+    # --- Carga de datos inicial (usando caché para eficiencia) ---
+    @st.cache_data
+    def load_station_data(path):
+        try:
+            df = pd.read_csv(path, sep=",", header=0)
+            df.columns = df.columns.str.strip().str.lower()
+            df.rename(columns={"latitude": "latitud", "longitude": "longitud", "site name": "estacion"}, inplace=True)
+            return df
+        except FileNotFoundError:
+            return None
 
-    # --- Entradas del usuario ---
+    df_stations = load_station_data("data/igs_stations.csv")
+    if df_stations is None:
+        st.error("Error: No se encontró el archivo 'data/igs_stations.csv'. La aplicación no puede continuar.")
+        return
+
+    # --- Inicializar Session State para guardar datos entre pasos ---
+    if 'verification_results' not in st.session_state:
+        st.session_state.verification_results = None
+
+    # --- Paso 1: Entradas del Usuario ---
+    st.header("1. Define los parámetros de búsqueda")
     col1, col2, col3 = st.columns(3)
     with col1:
-        lat = st.number_input("Latitud", value=49.877017, format="%.4f")
+        lat = st.number_input("Latitud", value=None, format="%.6f", placeholder="Ej: 49.877017")
     with col2:
-        lon = st.number_input("Longitud", value=-97.047440, format="%.4f")
+        lon = st.number_input("Longitud", value=None, format="%.6f", placeholder="Ej: -97.047440")
     with col3:
         fecha_input = st.date_input("Fecha", value=datetime.now(timezone.utc).date())
 
     col4, col5 = st.columns(2)
     with col4:
-        hora_inicio = st.number_input("Hora inicial (UTC)", value=0, min_value=0, max_value=23, step=1)
+        hora_inicio = st.number_input("Hora inicial (UTC)", 0, 23, 0, 1)
     with col5:
-        hora_fin = st.number_input("Hora final (UTC)", value=3, min_value=0, max_value=24, step=1)
+        hora_fin = st.number_input("Hora final (UTC)", 1, 24, 3, 1)
 
-    # --- Selección de estaciones ---
-    st.markdown("---")
-    estaciones_cercanas = estaciones_mas_cercanas(lat, lon, df, top_n=5)
-    estaciones_seleccionadas = st.multiselect(
-        "Estaciones más cercanas (elige hasta 2):",
-        options=estaciones_cercanas["estacion"].tolist(),
-        default=estaciones_cercanas["estacion"].tolist()[:2],
-        max_selections=2
-    )
-
-    # Validación ahora se hace para cada estación seleccionada.
-    # Esta sección se ejecuta solo si se han seleccionado estaciones.
-    if estaciones_seleccionadas:
-        st.markdown("---")
-        st.subheader("Información y Disponibilidad")
-        try:
-            # Convertir la fecha una sola vez
-            fecha = datetime.combine(fecha_input, datetime.min.time(), tzinfo=timezone.utc)
-            anio_consulta = fecha.year
-
-            # Descargar y parsear el summary una sola vez
-            df_summary_raw = descargar_summary(anio_consulta)
-            df_summary = parsear_summary(df_summary_raw)
-
-            # Iterar sobre las estaciones que el usuario eligió
-            for estacion in estaciones_seleccionadas:
-                st.markdown(f"#### Estación: `{estacion}`")
-                
-                # Mostrar resumen
-                mostrar_info_estacion_resumida(estacion, df_summary, df)
-
-                # Verificar disponibilidad
-                disponible, mensaje_dispo = verificar_disponibilidad_summary(estacion, fecha, df_summary, df)
-                if disponible:
-                    st.success(f"✔️ {mensaje_dispo}")
-                else:
-                    st.warning(f"❌ {mensaje_dispo}")
-
-        except Exception as e:
-            st.error(f"No se pudo verificar la disponibilidad: {e}")
-            st.warning("Puede ser un problema de conexión o un error al contactar el servidor de la NASA.")
-
-    # --- Botón de descarga ---
-    if st.button("Descargar archivos"):
-        if hora_fin <= hora_inicio:
-            st.warning("⚠️ La hora final debe ser mayor que la hora inicial.")
-        elif hora_fin - hora_inicio > 3:
-            st.warning("⚠️ El intervalo no puede ser de más de 3 horas.")
-        elif not estaciones_seleccionadas:
-            st.warning("⚠️ Debes seleccionar al menos una estación.")
+    # --- Paso 2: Botón de Búsqueda y Verificación ---
+    if st.button("Buscar estaciones y verificar disponibilidad"):
+        if lat is None or lon is None:
+            st.warning("Por favor, ingresa una latitud y longitud.")
         else:
-            fecha_dt = datetime.combine(fecha_input, datetime.min.time()) # Convertir a datetime
-            for estacion in estaciones_seleccionadas:
-                st.markdown(f"--- \n ### Procesando `{estacion}`...")
-                with st.spinner(f"Descargando y convirtiendo archivos para {estacion}..."):
+            with st.spinner("Buscando estaciones y contactando al servidor de la NASA..."):
+                try:
+                    # Encontrar estaciones cercanas
+                    df_cercanas = estaciones_mas_cercanas(lat, lon, df_stations, top_n=5)
                     
-                    # Se necesita la versión de RINEX para la descarga
-                    df_summary_raw = descargar_summary(fecha_dt.year)
-                    df_summary = parsear_summary(df_summary_raw)
-                    rinex_version = obtener_formato_rinex(estacion, df_summary)
-
-                    if not rinex_version:
-                        st.error(f"No se pudo determinar la versión de RINEX para {estacion}. No se puede continuar.")
-                        continue # Pasa a la siguiente estación
-
-                    resultado, mensaje, zip_path, temp_dir = download_file_zip(
-                        fecha_dt, estacion, hora_inicio, hora_fin, rinex_version
-                    )
+                    # Verificar disponibilidad para estas estaciones
+                    fecha_utc = datetime.combine(fecha_input, datetime.min.time(), tzinfo=timezone.utc)
+                    summary_raw = descargar_summary(fecha_utc.year)
+                    summary_dict = parsear_summary(summary_raw)
                     
-                    if resultado and zip_path:
-                        st.success(f"✅ {mensaje}")
-                        with open(zip_path, "rb") as f:
-                            st.download_button(
-                                f"Descargar ZIP de {estacion}",
-                                f,
-                                file_name=os.path.basename(zip_path),
-                                mime="application/zip"
+                    results = []
+                    for _, row in df_cercanas.iterrows():
+                        estacion = row['estacion']
+                        disponible, mensaje = verificar_disponibilidad_summary(estacion, fecha_utc, summary_dict, df_stations)
+                        rinex_v = obtener_formato_rinex(estacion, summary_dict) if disponible else None
+                        results.append({
+                            "estacion": estacion,
+                            "distancia_km": row['distancia_km'],
+                            "disponible": disponible,
+                            "mensaje": mensaje,
+                            "rinex_version": rinex_v
+                        })
+                    
+                    # Guardar los resultados en session_state para usarlos después
+                    st.session_state.verification_results = pd.DataFrame(results)
+                    st.success("Verificación completada.")
+
+                except Exception as e:
+                    st.error(f"Ocurrió un error durante la verificación: {e}")
+                    st.session_state.verification_results = None
+
+    # --- Paso 3: Selección y Descarga (solo si el paso 2 fue exitoso) ---
+    if st.session_state.verification_results is not None:
+        st.header("2. Resultados y descarga de archivos")
+        
+        df_results = st.session_state.verification_results
+        
+        # Mostrar tabla de resultados de la verificación
+        st.subheader("Disponibilidad de estaciones encontradas")
+        st.dataframe(df_results[['estacion', 'distancia_km', 'disponible', 'mensaje']], use_container_width=True)
+
+        # Filtrar solo las estaciones que SÍ están disponibles
+        estaciones_disponibles = df_results[df_results['disponible'] == True]['estacion'].tolist()
+
+        if not estaciones_disponibles:
+            st.info("Ninguna de las estaciones cercanas tiene datos disponibles para la fecha seleccionada.")
+        else:
+            st.subheader("Selecciona las estaciones a descargar")
+            estaciones_a_descargar = st.multiselect(
+                "Puedes descargar archivos para las siguientes estaciones:",
+                options=estaciones_disponibles,
+                default=estaciones_disponibles # Por defecto, todas las disponibles
+            )
+
+            # Botón final para la acción de descarga
+            if st.button("Descargar archivos seleccionados"):
+                if not estaciones_a_descargar:
+                    st.warning("Debes seleccionar al menos una estación para descargar.")
+                elif hora_fin <= hora_inicio:
+                    st.warning("⚠️ La hora final debe ser mayor que la hora inicial.")
+                elif hora_fin - hora_inicio > 3:
+                    st.warning("⚠️ El intervalo no puede ser de más de 3 horas.")
+                else:
+                    fecha_dt = datetime.combine(fecha_input, datetime.min.time())
+                    for estacion in estaciones_a_descargar:
+                        # Recuperar la versión de rinex guardada
+                        rinex_version = df_results.loc[df_results['estacion'] == estacion, 'rinex_version'].iloc[0]
+                        
+                        st.markdown(f"--- \n#### Procesando `{estacion}`...")
+                        with st.spinner(f"Generando ZIP para {estacion}..."):
+                            resultado, mensaje, zip_path, temp_dir = download_file_zip(
+                                fecha_dt, estacion, hora_inicio, hora_fin, rinex_version
                             )
-                        if temp_dir:
-                            temp_dir.cleanup() # Limpiar archivos temporales
-                    else:
-                        st.error(f"⚠️ {mensaje}")
+                            
+                            if resultado and zip_path:
+                                st.success(f"✅ {mensaje}")
+                                with open(zip_path, "rb") as f:
+                                    st.download_button(
+                                        f"Descargar ZIP de {estacion}",
+                                        data=f,
+                                        file_name=os.path.basename(zip_path),
+                                        mime="application/zip"
+                                    )
+                                if temp_dir:
+                                    temp_dir.cleanup()
+                            else:
+                                st.error(f"⚠️ {mensaje}")
 
+# Bloque de ejecución principal
 if __name__ == "__main__":
-    import sys
-    sys.exit(main())
+    main()
