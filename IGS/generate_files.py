@@ -35,17 +35,21 @@ def estaciones_mas_cercanas(latitud, longitud, df, top_n=2):
 def obtener_vinculos(anio: int, doy: str, sitename: str, hora_inicio: int = 0, hora_fin: int = 23, rinex_version="3"):
     urls = []
     estacion_corto = sitename[:4].lower()
+    yy = str(anio)[2:]
     tipo_archivo = "S" if rinex_version == "3" and estacion_corto in estaciones_tipo_S else "R"
 
     for hora in range(hora_inicio, hora_fin):
         for minuto in range(0, 60, 15):
+            minuto=f"{minuto:02d}"
             if rinex_version == "2":
-                nombre_archivo = f"{estacion_corto}_R_{anio}{doy}{hora:02d}{minuto:02d}_15M_01S_MO.crx.gz"
+                letra_hora=chr(ord('a'+hora))
+                nombre_archivo = f"{estacion_corto}{doy}{letra_hora}{minuto}.{yy}d.gz"
+                url=(f"https://cddis.nasa.gov/archive/gnss/data/highrate/"f"{anio}/{doy}/{yy}d/{hora:02d}/{nombre_archivo}")
             else:
-                nombre_archivo = f"{estacion_corto}_{tipo_archivo}_{anio}{doy}{hora:02d}{minuto:02d}_15M_01S_MO.crx.gz"
+                nombre_archivo = f"{sitename}_{tipo_archivo}_{anio}{doy}{hora:02d}{minuto}_15M_01S_MO.crx.gz"
             
             url = (f"https://cddis.nasa.gov/archive/gnss/data/highrate/"
-                f"{anio}/{doy}/25d/{hora:02d}/{nombre_archivo}")
+                f"{anio}/{doy}/{yy}d/{hora:02d}/{nombre_archivo}")
             urls.append((url, nombre_archivo))
 
     return urls
