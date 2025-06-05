@@ -1,4 +1,4 @@
-from datetime import datetime
+from datetime import datetime, timezone
 
 def is_bisiesto(year):
     """Verifica si un año es bisiesto."""
@@ -23,7 +23,18 @@ def fecha_a_doy(fecha_str):
     doy = calculate_date(fecha.year, fecha.month, fecha.day)
     return anio, doy
 
-def is_within_range(input_date):
+"""def is_within_range(input_date):
     today = datetime.today().date()  # Convertir a date
     delta = today - input_date       # input_date ya debe ser tipo date
-    return delta.days <= 182, delta.days
+    return delta.days <= 182, delta.days"""
+
+def is_within_range(input_date):
+    today = datetime.now(timezone.utc).date()
+
+    # Convierte input_date si aún no es date
+    if isinstance(input_date, datetime):
+        input_date = input_date.date()
+
+    delta = today - input_date
+    dias_diff = delta.days
+    return dias_diff <= 182, dias_diff
