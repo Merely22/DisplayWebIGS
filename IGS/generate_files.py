@@ -14,7 +14,7 @@ from geopy.distance import geodesic
 import requests
 
 ## CORRECCIÓN 1: Ruta al ejecutable con verificación
-RUTA_CRX2RNX = Path("data/CRX2RNX.exe") # Usar "./CRX2RNX" en Linux
+RUTA_CRX2RNX = "H:/Obtención de IGS/DisplayWebIGS/data/CRX2RNX.exe" # Usar "./CRX2RNX" en Linux
 estaciones_tipo_S = cargar_estaciones_tipo_S()
 
 # Carga de datos de estaciones
@@ -42,7 +42,7 @@ def obtener_vinculos(anio: int, doy: str, sitename: str, hora_inicio: int = 0, h
         for minuto in range(0, 60, 15):
             minuto=f"{minuto:02d}"
             if rinex_version == "2":
-                letra_hora=chr(ord('a'+hora))
+                letra_hora = chr(ord('a') + hora)
                 nombre_archivo = f"{estacion_corto}{doy}{letra_hora}{minuto}.{yy}d.gz"
                 url=(f"https://cddis.nasa.gov/archive/gnss/data/highrate/"f"{anio}/{doy}/{yy}d/{hora:02d}/{nombre_archivo}")
             else:
@@ -51,7 +51,6 @@ def obtener_vinculos(anio: int, doy: str, sitename: str, hora_inicio: int = 0, h
             url = (f"https://cddis.nasa.gov/archive/gnss/data/highrate/"
                 f"{anio}/{doy}/{yy}d/{hora:02d}/{nombre_archivo}")
             urls.append((url, nombre_archivo))
-
     return urls
 
 def descomprimir_crx_gz(ruta_archivo_gz):
@@ -67,11 +66,16 @@ def descomprimir_crx_gz(ruta_archivo_gz):
         print(f"Error al descomprimir {ruta_archivo_gz.name}: {e}")
         return None
 
-def convertir_a_rnx(ruta_crx: Path):
+def convertir_a_rnx(ruta_crx: Path, rinex_version="3"):
     try:
-        ruta_rnx = ruta_crx.with_suffix(".rnx")
-        if ruta_rnx.exists():
-            ruta_rnx.unlink()
+        if rinex_version == "2":
+            yy = ruta_crx.name[-3:-1]  # extrae '25' de 'mad2156a30.25d'
+            ruta_convertida = ruta_crx.with_suffix(f".{yy}o")  # esperado: .25o
+        else:
+            ruta_convertida = ruta_crx.with_suffix(".rnx")
+
+        if ruta_convertida.exists():
+            ruta_convertida.unlink()
 
         result = subprocess.run(
             [str(RUTA_CRX2RNX), "-f", str(ruta_crx)],
@@ -79,23 +83,17 @@ def convertir_a_rnx(ruta_crx: Path):
             capture_output=True,
             text=True,
             shell=False,
-            check=False # Para que no lance excepción si falla, y podamos leer el error
+            check=False
         )
         if result.returncode == 0:
-            # A veces CRX2RNX no renombra el archivo y lo deja como .YYo, hay que renombrarlo
-            archivo_obs = ruta_crx.with_suffix(f".{str(ruta_crx.name.split('_')[2][:2])}o")
-            if archivo_obs.exists():
-                archivo_obs.rename(ruta_rnx)
-                
-            if ruta_rnx.exists():
-                print(f"Convertido exitosamente: {ruta_crx.name} -> {ruta_rnx.name}")
-                return ruta_rnx
+            if ruta_convertida.exists():
+                return ruta_convertida
             else:
-                print(f"❌ Error: El archivo convertido {ruta_rnx.name} no se encontró después de la conversión.")
+                print(f"CRX2RNX ejecutado, pero no se encontró: {ruta_convertida.name}")
         else:
-            print(f"❌ Error de conversión para {ruta_crx.name}:\n{result.stderr}")
+            print(f"Error en CRX2RNX ({ruta_crx.name}):\n{result.stderr}")
     except Exception as e:
-        print(f"❌ Fallo en ejecución de CRX2RNX: {e}")
+        print(f"Excepción al ejecutar CRX2RNX: {e}")
     return None
 
 def download_file_zip(fecha, estacion, hora_inicio=0, hora_fin=24, rinex_version="3"):
@@ -148,7 +146,7 @@ def download_file_zip(fecha, estacion, hora_inicio=0, hora_fin=24, rinex_version
                 continue
 
             # Paso 2: Convertir .crx -> .rnx
-            ruta_rnx = convertir_a_rnx(ruta_crx)
+            ruta_rnx = convertir_a_rnx(ruta_crx, rinex_version)
             if ruta_rnx and ruta_rnx.exists():
                 archivos_rnx.append(ruta_rnx)
                 ruta_crx.unlink() # Borrar .crx intermedio
@@ -159,7 +157,6 @@ def download_file_zip(fecha, estacion, hora_inicio=0, hora_fin=24, rinex_version
             print(f"Error de red al descargar {archivo}: {e}")
         except Exception as e:
             print(f"Error inesperado procesando {archivo}: {e}")
-
     print(f"Resumen de descarga: {urls_exitosas}/{urls_intentadas} URLs exitosas.")
 
     if not archivos_rnx:
