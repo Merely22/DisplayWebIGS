@@ -1,4 +1,5 @@
-import time
+import os
+import platform
 import shutil
 import subprocess
 import gzip
@@ -14,7 +15,16 @@ from geopy.distance import geodesic
 import requests
 
 ## CORRECCIÓN 1: Ruta al ejecutable con verificación
-RUTA_CRX2RNX = "H:/Obtención de IGS/DisplayWebIGS/data/CRX2RNX.exe" # Usar "./CRX2RNX" en Linux
+sistema=platform.system()
+if sistema =="windows":
+    RUTA_CRX2RNX=Path("data/CRX2RNX.exe")
+else:
+    RUTA_CRX2RNX=Path("data/CRX2RNX")
+    if not os.access(RUTA_CRX2RNX, os.X_OK):
+        try:
+            os.chmod(RUTA_CRX2RNX, 0o755)
+        except Exception as e:
+         print(f"Error {e}")
 estaciones_tipo_S = cargar_estaciones_tipo_S()
 
 # Carga de datos de estaciones
