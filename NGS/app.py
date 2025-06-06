@@ -69,7 +69,7 @@ def main():
                         df_resultado = verificar_disponibilidad_rinex(df_seleccionadas, anio, doy)
 
                         st.header("3. Resultados y enlaces de descarga")
-                        st.dataframe(df_resultado[['station', 'Distancia_km', 'Disponible', 'URL']])
+                        st.dataframe(df_resultado[['station', 'Distancia_km', 'Disponible']])
                         
                         # Crear una sección de descargas más limpia
                         st.subheader("Enlaces de descarga directa:")
