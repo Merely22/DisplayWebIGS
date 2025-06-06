@@ -20,14 +20,14 @@ def display_map(path_igs, path_noaa):
         df1 = df1.rename(columns={"site name": "station", "latitude": "lat", "longitude": "lon"})
         df2 = df2.rename(columns={"siteid": "station", "y": "lat", "x": "lon"})
         
-        df1["source"] = "IGS Stations GNSS"
-        df2["source"] = "NOAA Stations GNSS"
+        df1["Source"] = "IGS Stations GNSS"
+        df2["Source"] = "NOAA Stations GNSS"
 
         df_all = pd.concat([df1, df2], ignore_index=True).dropna(subset=['lat', 'lon'])
         
         df_all["popup"] = df_all.apply(
             lambda row: f"<b>Estación:</b> {row['station']}<br>"
-                        f"<b>Fuente:</b> {row['source']}<br>"
+                        f"<b>Fuente:</b> {row['Source']}<br>"
                         f"<b>Lat:</b> {row['lat']:.4f}, <b>Lon:</b> {row['lon']:.4f}",
             axis=1
         )
@@ -57,13 +57,13 @@ def display_map(path_igs, path_noaa):
     cluster_noaa = MarkerCluster(name="NOAA Stations").add_to(m)
 
     # Añadimos los puntos a sus respectivos clusters
-    for _, row in df_all[df_all['source'] == "IGS Stations"].iterrows():
+    for _, row in df_all[df_all['Source'] == "IGS Stations"].iterrows():
         folium.CircleMarker(
             location=(row["lat"], row["lon"]), radius=5, color="blue", fill=True, fill_color="blue",
             fill_opacity=0.6, popup=folium.Popup(row["popup"], max_width=300)
         ).add_to(cluster_igs)
 
-    for _, row in df_all[df_all['source'] == "NOAA Stations"].iterrows():
+    for _, row in df_all[df_all['Source'] == "NOAA Stations"].iterrows():
         folium.CircleMarker(
             location=(row["lat"], row["lon"]), radius=5, color="green", fill=True, fill_color="green",
             fill_opacity=0.6, popup=folium.Popup(row["popup"], max_width=300)
@@ -74,11 +74,11 @@ def display_map(path_igs, path_noaa):
         user_coords = (user_lat, user_lon)
         
         # Calcular distancias y encontrar las 5 más cercanas
-        df_all["distancia"] = df_all.apply(lambda row: geodesic(user_coords, (row["lat"], row["lon"])).km, axis=1)
-        estaciones_cercanas = df_all.nsmallest(5, "distancia")
+        df_all["Distancia_km"] = df_all.apply(lambda row: geodesic(user_coords, (row["lat"], row["lon"])).km, axis=1)
+        estaciones_cercanas = df_all.nsmallest(5, "Distancia_km")
 
         st.markdown("### 📋 Las 5 estaciones más cercanas")
-        st.dataframe(estaciones_cercanas[["station", "lat", "lon", "distancia", "source"]])
+        st.dataframe(estaciones_cercanas[["station", "lat", "lon", "Distancia_km", "Source"]])
 
         # Capa para los marcadores rojos (cercanos)
         capa_cercanas = folium.FeatureGroup(name="Estaciones Cercanas", show=True).add_to(m)
@@ -95,7 +95,7 @@ def display_map(path_igs, path_noaa):
             folium.Marker(
                 location=(row["lat"], row["lon"]),
                 icon=folium.Icon(color="red", icon="tower", prefix='fa'),
-                popup=folium.Popup(f"<b>{row['station']}</b><br>Distancia: {row['distancia']:.2f} km", max_width=300)
+                popup=folium.Popup(f"<b>{row['station']}</b><br>Distancia: {row['Distancia_km']:.2f} km", max_width=300)
             ).add_to(capa_cercanas)
 
         # --- CORRECCIÓN 2: Zoom automático y dinámico ---
