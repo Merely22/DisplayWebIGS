@@ -66,11 +66,11 @@ def main():
                         disponible, mensaje = verificar_disponibilidad_summary(estacion, fecha_utc, summary_dict, df_stations)
                         rinex_v = obtener_formato_rinex(estacion, summary_dict) if disponible else None
                         results.append({
-                            "estacion": estacion,
-                            "distancia_km": row['distancia_km'],
-                            "disponible": disponible,
-                            "mensaje": mensaje,
-                            "rinex_version": rinex_v
+                            "Estacion": estacion,
+                            "Distancia_km": row['distancia_km'],
+                            "Disponible": disponible,
+                            "Mensaje": mensaje,
+                            "Rinex_version": rinex_v
                         })
                     
                     # Guardar los resultados en session_state para usarlos después
@@ -89,10 +89,10 @@ def main():
         
         # Mostrar tabla de resultados de la verificación
         st.subheader("Disponibilidad de estaciones encontradas")
-        st.dataframe(df_results[['estacion', 'distancia_km', 'disponible', 'mensaje']], use_container_width=True)
+        st.dataframe(df_results[['Estacion', 'Distancia_km', 'Disponible', 'Mensaje']], use_container_width=True)
 
         # Filtrar solo las estaciones que SÍ están disponibles
-        estaciones_disponibles = df_results[df_results['disponible'] == True]['estacion'].tolist()
+        estaciones_disponibles = df_results[df_results['Disponible'] == True]['Estacion'].tolist()
 
         if not estaciones_disponibles:
             st.info("Ninguna de las estaciones cercanas tiene datos disponibles para la fecha seleccionada.")
@@ -116,7 +116,7 @@ def main():
                     fecha_dt = datetime.combine(fecha_input, datetime.min.time())
                     for estacion in estaciones_a_descargar:
                         # Recuperar la versión de rinex guardada
-                        rinex_version = df_results.loc[df_results['estacion'] == estacion, 'rinex_version'].iloc[0]
+                        rinex_version = df_results.loc[df_results['Estacion'] == estacion, 'Rinex_version'].iloc[0]
                         
                         st.markdown(f"--- \n#### Procesando `{estacion}`...")
                         with st.spinner(f"Generando ZIP para {estacion}..."):
