@@ -107,13 +107,13 @@ def display_map(path_igs, path_noaa):
     # --- Leyenda bien posicionada ---
     legend_html = """
     <div style='position: absolute; top: 10px; right: 10px; width: 180px;
-                background-color: rgba(255, 255, 255, 0.85); /* Un poco más opaco */
+                background-color: rgba(255, 255, 255, 0.85); 
                 z-index: 1000; 
                 padding: 10px; 
                 border: 1px solid grey; 
-                border-radius: 8px; /* Bordes un poco más redondeados */
+                border-radius: 8px; 
                 font-size: 14px;
-                color: black; /* <-- ¡AQUÍ ESTÁ LA SOLUCIÓN! */
+                color: black; 
                 '>
         <b>🗺️ Leyenda</b><br>
         <i class="fa fa-circle" style="color:blue"></i> IGS Stations GNSS<br>
