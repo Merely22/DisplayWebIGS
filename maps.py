@@ -104,11 +104,17 @@ def display_map(path_igs, path_noaa):
         puntos_para_zoom.append(user_coords)
         m.fit_bounds(puntos_para_zoom, padding=(50, 50))
 
-    # --- CORRECCIÓN 3: Leyenda bien posicionada ---
+    # --- Leyenda bien posicionada ---
     legend_html = """
     <div style='position: absolute; top: 10px; right: 10px; width: 180px;
-                background-color: rgba(255, 255, 255, 0.8); z-index: 1000; 
-                padding: 10px; border: 1px solid grey; border-radius: 5px; font-size: 14px;'>
+                background-color: rgba(255, 255, 255, 0.85); /* Un poco más opaco */
+                z-index: 1000; 
+                padding: 10px; 
+                border: 1px solid grey; 
+                border-radius: 8px; /* Bordes un poco más redondeados */
+                font-size: 14px;
+                color: black; /* <-- ¡AQUÍ ESTÁ LA SOLUCIÓN! */
+                '>
         <b>🗺️ Leyenda</b><br>
         <i class="fa fa-circle" style="color:blue"></i> IGS Stations GNSS<br>
         <i class="fa fa-circle" style="color:green"></i> NOAA Stations GNSS<br>
