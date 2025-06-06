@@ -50,7 +50,7 @@ def verificar_disponibilidad_rinex(df_cercanas, anio, doy, tipo='obs'):
         nombre_archivo = generar_nombre_archivo(station, anio, doy, tipo)
         if nombre_archivo in contenido:
             disponibles.append("SI")
-            url = f"https://noaa-cors-pds.s3.amazonaws.com/rinex/{anio}/{doy_str}/{station}/{nombre_archivo}"
+            url = f"https://noaa-cors-pds.s3.amazonaws.com/rinex/{anio}/{doy_str}/{station.lower()}/{nombre_archivo}"
             urls.append(url)
         else:
             disponibles.append("NO")
