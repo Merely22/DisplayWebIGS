@@ -75,7 +75,7 @@ def main():
                         st.subheader("Direct download links:")
                         enlaces_disponibles = 0
                         for _, row in df_resultado.iterrows():
-                            if row['Available'] == "SI":
+                            if row['Available'] == "YES":
                                 # Usamos st.link_button para un estilo más moderno
                                 st.link_button(f"Descargar archivo de {row['Station']}", row['URL'])# verify header
                                 enlaces_disponibles += 1
