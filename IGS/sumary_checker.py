@@ -70,26 +70,38 @@ def parsear_summary(contenido_txt):
         if pd.notna(row["Start"]) and pd.notna(row["End"])
     }
     return summary_dict
+
 def verificar_disponibilidad_summary(sitename, fecha, summary_dict, csv_df):
     csv_df.columns = csv_df.columns.str.strip()
     nombre_corto = sitename[:4].upper()
     fila_csv = csv_df[csv_df["estacion"].str.startswith(nombre_corto)]
+    
     if fila_csv.empty:
-        print("No se encontró en el CSV local")
-        return False, "La estación no está en el CSV local."
+        print("Not found in local CSV.")
+        return False, "The station is not listed in the local CSV file."
+    
     tiene_rate1s = fila_csv["rate 1s"].values[0].strip().upper() == "SI"
-    print(f"Tiene rate 1s: {tiene_rate1s}")
+    print(f"Has 1s rate data: {tiene_rate1s}")
+    
     if not tiene_rate1s:
-        return False, "La estación no tiene datos en 1s (según CSV local)."
+        return False, "The station has no 1s data (according to the local CSV)."
+    
     if nombre_corto not in summary_dict:
-        print("No encontrada en summary_dict")
-        return False, "La estación no está listada en base de datos del año seleccionado."
-    info = summary_dict[nombre_corto]    
+        print("Not found in summary_dict.")
+        return False, "The station is not listed in the database for the selected year."
+    
+    info = summary_dict[nombre_corto]
+    
     if pd.isna(info["Start"]) or pd.isna(info["End"]):
-        return False, "Fechas inválidas."
+        return False, "Invalid date range."
+    
     if not (info["Start"] <= fecha <= info["End"]):
-        return False, f"La fecha que seleccionó no cuenta con datos para esta estación, debe estar en el rango de ({info['Start'].date()} a {info['End'].date()})."
-    return True, f"Datos 1s disponibles. Formato: RINEX v{info['Format']}"
+        return False, f"The selected date is out of range for this station. It must be between {info['Start'].date()} and {info['End'].date()}."
+    
+    return True, f"1s data available. Format: RINEX v{info['Format']}"
+
+
+
 def obtener_formato_rinex(sitename, summary_dict):
     nombre_corto = sitename[:4].upper()
     info = summary_dict.get(nombre_corto)

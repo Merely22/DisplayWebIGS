@@ -2,20 +2,27 @@ import streamlit as st
 import pandas as pd
 from maps import display_map
 from PIL import Image
-# Set up
-st.set_page_config(page_title="Metta - GNSS Data Collection", layout="wide", page_icon= "🛰️")
 
-st.sidebar.title("Menú de herramientas")
-imagen_izq = Image.open("files/metta_logo_hd.png") 
-st.logo(imagen_izq)
+# Set up page
+st.set_page_config(
+    page_title="Metta - GNSS Data Collection",
+    layout="wide",
+    page_icon="🛰️"
+)
 
-opcion = st.sidebar.selectbox("Selecciona una herramienta:", [
-    "INICIO",
+# Title
+st.title("🌍 GNSS Data Collection")
+
+# Sidebar title and logo
+st.sidebar.image("files/metta_logo_hd.png", use_container_width=True)
+st.sidebar.title("Tools Menu")
+opcion = st.sidebar.selectbox("Select a tool:", [
+    "Home",
     "International GNSS Service (IGS)",
     "NOAA National Geodetic Survey (NGS)"
 ])
 
-if opcion == "INICIO":
+if opcion == "Home":
     # Define rutas a los CSVs locales
     path_igs = "data/igs_stations.csv"
     path_noaa = "data/noaa_cors.csv"

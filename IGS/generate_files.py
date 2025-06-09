@@ -110,7 +110,7 @@ def convertir_a_rnx(ruta_crx: Path, rinex_version="3"):
 def download_file_zip(fecha, estacion, hora_inicio=0, hora_fin=24, rinex_version="3"):
     en_rango, dias_diff = is_within_range(fecha)
     if not en_rango:
-        return False, f"⚠️ Solo se permiten fechas hasta 182 días antes. Su fecha tiene {dias_diff} días.", None, None
+        return False, f"⚠️ Only dates up to 182 days in advance are allowed. Your date has {dias_diff} days.", None, None
 
     anio, mes, dia = fecha.year, fecha.month, fecha.day
     doy = str(calculate_date(anio, mes, dia)).zfill(3)
@@ -136,7 +136,7 @@ def download_file_zip(fecha, estacion, hora_inicio=0, hora_fin=24, rinex_version
         try:
             r = session.get(url, stream=True, timeout=30)
             
-            ## CORRECCIÓN 3: Mejorar la depuración (debug) para ver por qué falla una URL
+            ## Mejorar la depuración (debug) para ver por qué falla una URL
             if r.status_code != 200:
                 print(f"-> Fallo en URL (Status {r.status_code}): {url}")
                 continue # Pasa a la siguiente URL
