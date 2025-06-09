@@ -16,7 +16,7 @@ import requests
 
 ## CORRECCIÓN 1: Ruta al ejecutable con verificación
 sistema=platform.system()
-if sistema =="windows":
+if sistema =="Windows":
     RUTA_CRX2RNX=Path("data/CRX2RNX.exe")
 else:
     RUTA_CRX2RNX=Path("data/CRX2RNX")
