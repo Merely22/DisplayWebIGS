@@ -8,7 +8,7 @@ import streamlit as st
 def display_map(path_igs, path_noaa):
     st.title("🌍 Visualización de Estaciones GNSS")
 
-    # --- Carga y preparación de datos (solo se hace una vez) ---
+    # --- Carga y preparación de datos  ---
     @st.cache_data
     def load_data(path_igs, path_noaa):
         df1 = pd.read_csv(path_igs)
@@ -51,7 +51,7 @@ def display_map(path_igs, path_noaa):
     # Centrado general al inicio
     m = folium.Map(location=[20, 0], zoom_start=2)
 
-    # --- CORRECCIÓN 1: Usar MarkerCluster para un rendimiento óptimo ---
+    # ---  Usar MarkerCluster para un rendimiento óptimo ---
     # Creamos un cluster para cada fuente de datos
     cluster_igs = MarkerCluster(name="IGS Stations").add_to(m)
     cluster_noaa = MarkerCluster(name="NOAA Stations").add_to(m)
@@ -98,7 +98,7 @@ def display_map(path_igs, path_noaa):
                 popup=folium.Popup(f"<b>{row['station']}</b><br>Distancia: {row['Distancia_km']:.2f} km", max_width=300)
             ).add_to(capa_cercanas)
 
-        # --- CORRECCIÓN 2: Zoom automático y dinámico ---
+        # --- Zoom automático y dinámico ---
         # Creamos una lista de puntos para ajustar el mapa
         puntos_para_zoom = estaciones_cercanas[['lat', 'lon']].values.tolist()
         puntos_para_zoom.append(user_coords)

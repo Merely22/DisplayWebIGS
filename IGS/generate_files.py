@@ -14,8 +14,7 @@ import pandas as pd
 from geopy.distance import geodesic
 import requests
 
-## CORRECCIÓN 1: Ruta al ejecutable con verificación
-## CORRECCIÓN 1: Ruta al ejecutable con verificación
+## Ruta al ejecutable con verificación
 sistema=platform.system()
 if sistema =="windows":
     RUTA_CRX2RNX=Path("data/CRX2RNX.exe")
