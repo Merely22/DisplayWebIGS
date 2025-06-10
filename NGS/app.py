@@ -87,5 +87,5 @@ def main():
                         st.error(f"An error occurred while checking availability: {e}")
 
 # Bloque de ejecución principal
-if __name__ == "__main__":
-    main()
+##if __name__ == "__main__":
+##    main()

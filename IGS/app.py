@@ -139,5 +139,5 @@ def main():
                                 st.error(f"⚠️ {mensaje}")
 
 # Bloque de ejecución principal
-if __name__ == "__main__":
-    main()
+##if __name__ == "__main__":
+##    main()
