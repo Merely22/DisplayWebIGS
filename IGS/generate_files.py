@@ -173,3 +173,5 @@ def download_file_zip(fecha, estacion, hora_inicio=0, hora_fin=24, rinex_version
             zipf.write(archivo_rnx, arcname=archivo_rnx.name)
 
     return True, f"Archivos descargados y convertidos exitosamente ({len(archivos_rnx)} archivos).", zip_path, temp_dir
+
+print("generate_files.py cargado")
