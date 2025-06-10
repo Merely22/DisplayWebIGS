@@ -14,25 +14,19 @@ import pandas as pd
 from geopy.distance import geodesic
 import requests
 
-## Ruta al ejecutable con verificación
-sistema=platform.system()
-if sistema =="windows":
-    RUTA_CRX2RNX=Path("data/CRX2RNX.exe")
-else:
-    RUTA_CRX2RNX=Path("data/CRX2RNX")
-    if not os.access(RUTA_CRX2RNX, os.X_OK):
-        try:
-            os.chmod(RUTA_CRX2RNX, 0o755)
-        except Exception as e:
-         print(f"Error {e}")
+## Cargar estaciones   
+RUTA_CRX2RNX=Path("data/CRX2RNX.exe")  
 estaciones_tipo_S = cargar_estaciones_tipo_S()
 
-
-# Carga de datos de estaciones
-data_path = "data/igs_stations.csv"
-df = pd.read_csv(data_path, sep=",", header=0)
-df.columns = df.columns.str.strip().str.lower()
-df.rename(columns={"latitude": "latitud", "longitude": "longitud", "site name": "estacion"}, inplace=True)
+def load_df(path_archivo: str) -> pd.DataFrame:
+    df = pd.read_csv(path_archivo, sep=",", header=0)
+    df.columns = df.columns.str.strip().str.lower()
+    df.rename(columns={
+        "latitude": "latitud",
+        "longitude": "longitud",
+        "site name": "estacion"
+    }, inplace=True)
+    return df
 
 def estaciones_mas_cercanas(latitud, longitud, df, top_n=2):
     ubicacion_usuario = (latitud, longitud)

@@ -2,6 +2,7 @@ import streamlit as st
 import pandas as pd
 from datetime import datetime, timezone
 import os
+from pathlib import Path
 from IGS.generate_files import download_file_zip, estaciones_mas_cercanas
 from IGS.components import mostrar_info_estacion_resumida
 from IGS.sumary_checker import descargar_summary, parsear_summary, verificar_disponibilidad_summary, obtener_formato_rinex
@@ -21,6 +22,7 @@ def main():
             return None
 
     df_stations = load_station_data("data/igs_stations.csv")
+
     if df_stations is None:
         st.error("File ‘data/igs_stations.csv’ was not found. The application cannot continue.")
         return
