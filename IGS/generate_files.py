@@ -14,17 +14,10 @@ import pandas as pd
 from geopy.distance import geodesic
 import requests
 
-## Ruta al ejecutable con verificación
-sistema=platform.system()
-if sistema =="windows":
-    RUTA_CRX2RNX=Path("data/CRX2RNX.exe")
-else:
-    RUTA_CRX2RNX=Path("data/CRX2RNX")
-    if not os.access(RUTA_CRX2RNX, os.X_OK):
-        try:
-            os.chmod(RUTA_CRX2RNX, 0o755)
-        except Exception as e:
-         print(f"Error {e}")
+
+RUTA_CRX2RNX=Path("data/CRX2RNX")
+
+
 estaciones_tipo_S = cargar_estaciones_tipo_S()
 
 
