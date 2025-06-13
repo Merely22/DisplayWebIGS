@@ -6,8 +6,6 @@ from streamlit_folium import st_folium
 import streamlit as st
 
 def display_map(path_igs, path_noaa):
-
-    # --- Carga y preparación de datos  ---
     @st.cache_data
     def load_data(path_igs, path_noaa):
         df1 = pd.read_csv(path_igs)
@@ -16,14 +14,13 @@ def display_map(path_igs, path_noaa):
         df1.columns = df1.columns.str.lower().str.strip()
         df2.columns = df2.columns.str.lower().str.strip()
 
-        df1 = df1.rename(columns={"site name": "Station", "Latitude": "lat", "longitude": "Longitude"})
+        df1 = df1.rename(columns={"site name": "Station", "latitude": "Latitude", "longitude": "Longitude"})
         df2 = df2.rename(columns={"siteid": "Station", "y": "Latitude", "x": "Longitude"})
         
         df1["Source"] = "IGS Stations GNSS"
         df2["Source"] = "NOAA Stations GNSS"
 
         df_all = pd.concat([df1, df2], ignore_index=True).dropna(subset=['Latitude', 'Longitude'])
-        
         df_all["popup"] = df_all.apply(
             lambda row: f"<b>Station:</b> {row['Station']}<br>"
                         f"<b>Source:</b> {row['Source']}<br>"
