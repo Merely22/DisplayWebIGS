@@ -1,9 +1,9 @@
 import pandas as pd
 import folium
+import streamlit as st
 from folium.plugins import MarkerCluster
 from geopy.distance import geodesic
 from streamlit_folium import st_folium
-import streamlit as st
 
 def display_map(path_igs, path_noaa):
     @st.cache_data
@@ -17,8 +17,8 @@ def display_map(path_igs, path_noaa):
         df1 = df1.rename(columns={"site name": "Station", "latitude": "Latitude", "longitude": "Longitude"})
         df2 = df2.rename(columns={"siteid": "Station", "y": "Latitude", "x": "Longitude"})
         
-        df1["Source"] = "IGS Stations GNSS"
-        df2["Source"] = "NOAA Stations GNSS"
+        df1["Source"] = "IGS Stations"
+        df2["Source"] = "NOAA Stations"
 
         df_all = pd.concat([df1, df2], ignore_index=True).dropna(subset=['Latitude', 'Longitude'])
         df_all["popup"] = df_all.apply(
@@ -32,7 +32,6 @@ def display_map(path_igs, path_noaa):
     df_all = load_data(path_igs, path_noaa)
 
     # --- Interfaz de usuario ---
-    #st.markdown("### 📍 Ingresa tus coordenadas")
     col1, col2 = st.columns(2)
     with col1:
         # Usamos session_state para recordar las coordenadas
