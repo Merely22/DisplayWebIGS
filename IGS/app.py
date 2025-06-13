@@ -21,7 +21,6 @@ def main():
         except FileNotFoundError:
             return None
         
-    RUTA_CRX2RNX=Path("data/CRX2RNX.exe")
     df_stations = load_station_data("data/igs_stations.csv")
 
     if df_stations is None:

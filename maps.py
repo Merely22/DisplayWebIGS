@@ -73,7 +73,7 @@ def display_map(path_igs, path_noaa):
         df_all["Distance_km"] = df_all.apply(lambda row: geodesic(user_coords, (row["Latitude"], row["Longitude"])).km, axis=1)
         estaciones_cercanas = df_all.nsmallest(5, "Distance_km")
 
-        st.markdown("### 📋 Las 5 estaciones más cercanas")
+        st.markdown("## 📋 The 5 nearest stations")
         st.dataframe(estaciones_cercanas[["Station", "Latitude", "Longitude", "Distance_km", "Source"]])
 
         # Capa para los marcadores rojos (cercanos)
