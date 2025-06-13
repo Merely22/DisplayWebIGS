@@ -20,7 +20,8 @@ def main():
             return df
         except FileNotFoundError:
             return None
-
+        
+    RUTA_CRX2RNX=Path("data/CRX2RNX.exe")
     df_stations = load_station_data("data/igs_stations.csv")
 
     if df_stations is None:
@@ -141,5 +142,5 @@ def main():
                                 st.error(f"⚠️ {mensaje}")
 
 # Bloque de ejecución principal
-if __name__ == "__main__":
-    main()
+#if __name__ == "__main__":
+    #main()

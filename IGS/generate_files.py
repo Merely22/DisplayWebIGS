@@ -1,21 +1,18 @@
-import os
-import platform
 import shutil
 import subprocess
 import gzip
+import requests
+import pandas as pd
+from geopy.distance import geodesic
 from zipfile import ZipFile
 from pathlib import Path
-from datetime import datetime
+from datetime import datetime, date
 from tempfile import TemporaryDirectory
 from IGS.generate_date import calculate_date, is_within_range
 from IGS.authenticator import SessionWithHeaderRedirection
 from IGS.sumary_checker import cargar_estaciones_tipo_S
-import pandas as pd
-from geopy.distance import geodesic
-import requests
+from typing import Optional
 
-## Cargar estaciones   
-RUTA_CRX2RNX=Path("data/CRX2RNX.exe")  
 estaciones_tipo_S = cargar_estaciones_tipo_S()
 
 def load_df(path_archivo: str) -> pd.DataFrame:
@@ -58,10 +55,19 @@ def obtener_vinculos(anio: int, doy: str, sitename: str, hora_inicio: int = 0, h
             urls.append((url, nombre_archivo))
     return urls
 
+# insertar funcion de ruta ejecutable
+def obtener_ruta_ejecutable(directorio_base: str = "data") -> Optional[Path]:
+    ruta = Path(directorio_base) / "CRX2RNX.exe"
+    if not ruta.exists():
+        print(f"No se encontró 'CRX2RNX.exe' en la carpeta '{directorio_base}'.")
+        return None
+    return ruta
+
+# ---  descomprimir_crx_gz  ---
 def descomprimir_crx_gz(ruta_archivo_gz):
     ruta_crx = ruta_archivo_gz.with_suffix("")
     if ruta_crx.exists():
-        ruta_crx.unlink() # Borra el archivo .crx si ya existe para evitar problemas
+        ruta_crx.unlink()
     try:
         with gzip.open(ruta_archivo_gz, 'rb') as f_in:
             with open(ruta_crx, 'wb') as f_out:
@@ -71,19 +77,24 @@ def descomprimir_crx_gz(ruta_archivo_gz):
         print(f"Error al descomprimir {ruta_archivo_gz.name}: {e}")
         return None
 
-def convertir_a_rnx(ruta_crx: Path, rinex_version="3"):
+# modificar convertir_a_rnx para que reciba la ruta ---
+def convertir_a_rnx(ruta_crx: Path, ruta_ejecutable: Path, rinex_version="3"):
+
     try:
+        # Lógica para determinar el nombre de salida
         if rinex_version == "2":
-            yy = ruta_crx.name[-3:-1]  # extrae '25' de 'mad2156a30.25d'
-            ruta_convertida = ruta_crx.with_suffix(f".{yy}o")  # esperado: .25o
+            yy = ruta_crx.name.split('.')[-1][0:2]
+            ruta_convertida = ruta_crx.with_suffix(f".{yy}o")
         else:
             ruta_convertida = ruta_crx.with_suffix(".rnx")
 
         if ruta_convertida.exists():
             ruta_convertida.unlink()
 
+        comando = [str(ruta_ejecutable), "-f", str(ruta_crx)] # setear ruta
+
         result = subprocess.run(
-            [str(RUTA_CRX2RNX), "-f", str(ruta_crx)],
+            comando,
             cwd=ruta_crx.parent,
             capture_output=True,
             text=True,
@@ -101,10 +112,15 @@ def convertir_a_rnx(ruta_crx: Path, rinex_version="3"):
         print(f"Excepción al ejecutar CRX2RNX: {e}")
     return None
 
+# añadir funcion
 def download_file_zip(fecha, estacion, hora_inicio=0, hora_fin=24, rinex_version="3"):
+    ruta_exe = obtener_ruta_ejecutable() #obtener la ruta del ejecutable AL PRINCIPIO.
+    if not ruta_exe:
+        return False, "Proceso fallido: El ejecutable CRX2RNX.exe no fue encontrado.", None, None
+
     en_rango, dias_diff = is_within_range(fecha)
     if not en_rango:
-        return False, f"⚠️ Only dates up to 182 days in advance are allowed. Your date has {dias_diff} days.", None, None
+        return False, f"⚠️ La fecha tiene {dias_diff} días de antigüedad (máx 182).", None, None
 
     anio, mes, dia = fecha.year, fecha.month, fecha.day
     doy = str(calculate_date(anio, mes, dia)).zfill(3)
@@ -115,62 +131,53 @@ def download_file_zip(fecha, estacion, hora_inicio=0, hora_fin=24, rinex_version
     vinculos = obtener_vinculos(anio, doy, estacion, hora_inicio, hora_fin, rinex_version)
 
     temp_dir = TemporaryDirectory()
-    carpeta_salida = Path(temp_dir.name) / f"{estacion}_{fecha.strftime('%Y%m%d')}"
-    carpeta_salida.mkdir(parents=True, exist_ok=True)
+    carpeta_salida = Path(temp_dir.name)
 
     archivos_rnx = []
-    urls_intentadas = 0
-    urls_exitosas = 0
-
-    print(f"\nIniciando descarga para la estación {estacion} en la fecha {fecha.date()}...")
+    print(f"\nIniciando descarga para la estación {estacion}...")
     
     for url, archivo in vinculos:
-        urls_intentadas += 1
         ruta_gz = carpeta_salida / archivo
         try:
             r = session.get(url, stream=True, timeout=30)
-            
-            ## Mejorar la depuración (debug) para ver por qué falla una URL
             if r.status_code != 200:
                 print(f"-> Fallo en URL (Status {r.status_code}): {url}")
-                continue # Pasa a la siguiente URL
-                
-            if "html" in r.headers.get("Content-Type", ""):
-                print(f"-> Fallo en URL (recibido HTML, posible pág de error): {url}")
                 continue
 
             with open(ruta_gz, "wb") as f:
                 f.write(r.content)
             
             print(f"-> Descargado: {archivo}")
-            urls_exitosas += 1
-
-            # Paso 1: Descomprimir .gz -> .crx
+            
             ruta_crx = descomprimir_crx_gz(ruta_gz)
             if not ruta_crx:
                 continue
 
-            # Paso 2: Convertir .crx -> .rnx
-            ruta_rnx = convertir_a_rnx(ruta_crx, rinex_version)
+            #  la ruta del ejecutable a la función de conversión.
+            ruta_rnx = convertir_a_rnx(ruta_crx, ruta_exe, rinex_version)
+            
             if ruta_rnx and ruta_rnx.exists():
                 archivos_rnx.append(ruta_rnx)
-                ruta_crx.unlink() # Borrar .crx intermedio
+                if ruta_crx.exists(): ruta_crx.unlink()
             
-            ruta_gz.unlink() # Borrar .gz descargado
+            if ruta_gz.exists(): ruta_gz.unlink()
 
-        except requests.exceptions.RequestException as e:
-            print(f"Error de red al descargar {archivo}: {e}")
         except Exception as e:
             print(f"Error inesperado procesando {archivo}: {e}")
-    print(f"Resumen de descarga: {urls_exitosas}/{urls_intentadas} URLs exitosas.")
 
     if not archivos_rnx:
         temp_dir.cleanup()
-        return False, "No se pudo descargar o convertir ningún archivo. Revisa la consola para ver los errores de URL.", None, None
+        return False, "No se pudo descargar o convertir ningún archivo.", None, None
 
-    zip_path = carpeta_salida.parent / f"{carpeta_salida.name}.zip"
+    zip_path = carpeta_salida / f"{estacion}_{fecha.strftime('%Y%m%d')}.zip"
     with ZipFile(zip_path, "w") as zipf:
         for archivo_rnx in archivos_rnx:
             zipf.write(archivo_rnx, arcname=archivo_rnx.name)
 
-    return True, f"Archivos descargados y convertidos exitosamente ({len(archivos_rnx)} archivos).", zip_path, temp_dir
+    return True, f"Archivos descargados y convertidos ({len(archivos_rnx)}).", zip_path, temp_dir
+
+
+
+
+
+
