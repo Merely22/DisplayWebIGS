@@ -12,6 +12,7 @@ from IGS.generate_date import calculate_date, is_within_range
 from IGS.authenticator import SessionWithHeaderRedirection
 from IGS.sumary_checker import cargar_estaciones_tipo_S
 from typing import Optional
+import platform
 
 
 
@@ -59,12 +60,26 @@ def obtener_vinculos(anio: int, doy: str, sitename: str, hora_inicio: int = 0, h
     return urls
 
 # insertar funcion de ruta ejecutable
+
+
 def obtener_ruta_ejecutable(directorio_base: str = "data") -> Optional[Path]:
-    ruta = Path(directorio_base) / "CRX2RNX.exe"
+    sistema = platform.system().lower()
+    nombre_ejecutable = "CRX2RNX.exe" if sistema == "windows" else "CRX2RNX"
+    ruta = Path(directorio_base) / nombre_ejecutable
+
     if not ruta.exists():
-        print(f"No se encontró 'CRX2RNX.exe' en la carpeta '{directorio_base}'.")
+        print(f"No se encontró '{nombre_ejecutable}' en la carpeta '{directorio_base}'.")
         return None
+
+    if sistema != "windows" and not os.access(ruta, os.X_OK):
+        try:
+            os.chmod(ruta, 0o755)
+        except Exception as e:
+            print(f"Error al asignar permisos de ejecución a '{ruta}': {e}")
+            return None
+
     return ruta
+
 
 # ---  descomprimir_crx_gz  ---
 def descomprimir_crx_gz(ruta_archivo_gz):
@@ -81,7 +96,7 @@ def descomprimir_crx_gz(ruta_archivo_gz):
         return None
 
 # modificar convertir_a_rnx para que reciba la ruta ---
-"""def convertir_a_rnx(ruta_crx: Path, ruta_ejecutable: Path, rinex_version="3"):
+def convertir_a_rnx(ruta_crx: Path, ruta_ejecutable: Path, rinex_version="3"):
 
     try:
         # Lógica para determinar el nombre de salida
@@ -113,7 +128,7 @@ def descomprimir_crx_gz(ruta_archivo_gz):
             print(f"Error en CRX2RNX ({ruta_crx.name}):\n{result.stderr}")
     except Exception as e:
         print(f"Excepción al ejecutar CRX2RNX: {e}")
-    return None  """""
+    return None 
 
 # añadir funcion
 def download_file_zip(fecha, estacion, hora_inicio=0, hora_fin=24, rinex_version="3"):
