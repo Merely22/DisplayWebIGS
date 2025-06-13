@@ -81,7 +81,7 @@ def descomprimir_crx_gz(ruta_archivo_gz):
         return None
 
 # modificar convertir_a_rnx para que reciba la ruta ---
-def convertir_a_rnx(ruta_crx: Path, ruta_ejecutable: Path, rinex_version="3"):
+"""def convertir_a_rnx(ruta_crx: Path, ruta_ejecutable: Path, rinex_version="3"):
 
     try:
         # Lógica para determinar el nombre de salida
@@ -113,7 +113,7 @@ def convertir_a_rnx(ruta_crx: Path, ruta_ejecutable: Path, rinex_version="3"):
             print(f"Error en CRX2RNX ({ruta_crx.name}):\n{result.stderr}")
     except Exception as e:
         print(f"Excepción al ejecutar CRX2RNX: {e}")
-    return None
+    return None  """""
 
 # añadir funcion
 def download_file_zip(fecha, estacion, hora_inicio=0, hora_fin=24, rinex_version="3"):
