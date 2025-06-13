@@ -13,6 +13,7 @@ from IGS.authenticator import SessionWithHeaderRedirection
 from IGS.sumary_checker import cargar_estaciones_tipo_S
 from typing import Optional
 import platform
+import os
 
 
 
