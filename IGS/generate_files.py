@@ -13,13 +13,6 @@ from IGS.authenticator import SessionWithHeaderRedirection
 from IGS.sumary_checker import cargar_estaciones_tipo_S
 from typing import Optional
 
-<<<<<<< HEAD
-
-RUTA_CRX2RNX=Path("data/CRX2RNX")
-
-
-=======
->>>>>>> fc590e3bb644ca8a3aed3bcc5da4a5f97b19c30e
 estaciones_tipo_S = cargar_estaciones_tipo_S()
 
 def load_df(path_archivo: str) -> pd.DataFrame:
@@ -181,11 +174,6 @@ def download_file_zip(fecha, estacion, hora_inicio=0, hora_fin=24, rinex_version
         for archivo_rnx in archivos_rnx:
             zipf.write(archivo_rnx, arcname=archivo_rnx.name)
 
-<<<<<<< HEAD
-    return True, f"Archivos descargados y convertidos exitosamente ({len(archivos_rnx)} archivos).", zip_path, temp_dir
-
-print("generate_files.py cargado")
-=======
     return True, f"Archivos descargados y convertidos ({len(archivos_rnx)}).", zip_path, temp_dir
 
 
@@ -193,4 +181,3 @@ print("generate_files.py cargado")
 
 
 
->>>>>>> fc590e3bb644ca8a3aed3bcc5da4a5f97b19c30e
