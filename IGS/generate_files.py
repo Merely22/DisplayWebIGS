@@ -13,7 +13,7 @@ from IGS.authenticator import SessionWithHeaderRedirection
 from IGS.sumary_checker import cargar_estaciones_tipo_S
 from typing import Optional
 
-# estaciones_tipo_S = cargar_estaciones_tipo_S()
+
 
 def load_df(path_archivo: str) -> pd.DataFrame:
     df = pd.read_csv(path_archivo, sep=",", header=0)
@@ -35,6 +35,9 @@ def estaciones_mas_cercanas(latitud, longitud, df, top_n=2):
     return df_ordenado.head(top_n)
 
 def obtener_vinculos(anio: int, doy: str, sitename: str, hora_inicio: int = 0, hora_fin: int = 23, rinex_version="3"):
+    from IGS.sumary_checker import cargar_estaciones_tipo_S
+    estaciones_tipo_S = cargar_estaciones_tipo_S()  # Se ejecuta solo cuando se llama esta función
+
     urls = []
     estacion_corto = sitename[:4].lower()
     yy = str(anio)[2:]
