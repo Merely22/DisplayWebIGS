@@ -4,6 +4,7 @@ import requests
 from io import StringIO
 from IGS.authenticator import SessionWithHeaderRedirection
 from pathlib import Path
+
 def cargar_estaciones_tipo_S(ruta_csv="data/stations_s.csv"):
     ruta = Path(ruta_csv)
     if not ruta.exists():
