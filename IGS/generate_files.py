@@ -114,7 +114,7 @@ def convertir_a_rnx(ruta_crx: Path, ruta_ejecutable: Path, rinex_version="3"):
 
         result = subprocess.run(
             comando,
-            cwd=ruta_crx.parent,
+            cwd=str(Path(__file__).parent.parent),  # asegura que cwd sea /app  / # ruta_crx.parent,
             capture_output=True,
             text=True,
             shell=False,
