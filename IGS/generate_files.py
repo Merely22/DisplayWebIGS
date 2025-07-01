@@ -1,12 +1,16 @@
-import os
 import time
 import shutil
+<<<<<<< HEAD:src/generate_files.py
 import subprocess
 import gzip
 from zipfile import ZipFile
+=======
+>>>>>>> main:IGS/generate_files.py
 from pathlib import Path
 from datetime import datetime
+from zipfile import ZipFile
 from tempfile import TemporaryDirectory
+<<<<<<< HEAD:src/generate_files.py
 from src.generate_date import calculate_date, is_within_range
 from src.authenticator import SessionWithHeaderRedirection
 from src.sumary_checker import cargar_estaciones_tipo_S
@@ -19,6 +23,29 @@ RUTA_CRX2RNX = Path("./CRX2RNX.exe")#usar "./CRX2RNX" en linux
 estaciones_tipo_S = cargar_estaciones_tipo_S()
 
 def obtener_vinculos(anio, doy, estacion, hora_inicio=0, hora_fin=24, rinex_version="3"):
+=======
+from IGS.generate_date import calculate_date, is_within_range 
+from IGS.authenticator import SessionWithHeaderRedirection
+from geopy.distance import geodesic
+import pandas as pd
+
+# Load station data
+data_path = "data/igs_stations.csv"
+df = pd.read_csv(data_path, sep=",", header=0)
+df.columns = df.columns.str.strip().str.lower()
+df.rename(columns={"Latitude": "latitud", "Longitude": "longitud", "Site Name": "estacion"}, inplace=True)
+
+def estaciones_mas_cercanas(latitud, longitud, df, top_n=2):
+    ubicacion_usuario = (latitud, longitud)
+    df["distancia_km"] = df.apply(
+        lambda row: geodesic(ubicacion_usuario, (row["latitud"], row["longitud"])).kilometers,
+        axis=1
+    )
+    df_ordenado = df.sort_values("distancia_km")
+    return df_ordenado.head(top_n)
+
+def obtener_vinculos(anio: int, doy: str, estacion: str, hora_inicio: int = 0, hora_fin: int = 23) -> list:
+>>>>>>> main:IGS/generate_files.py
     urls = []
     doy_str = str(doy).zfill(3)
     estacion_corto = estacion[:4].lower()
@@ -56,6 +83,7 @@ def convertir_a_rnx(ruta_crx: Path):
         if ruta_rnx.exists():
             ruta_rnx.unlink()  # Elimina el .rnx si ya existe para evitar conflicto
 
+<<<<<<< HEAD:src/generate_files.py
         result = subprocess.run(
             [str(RUTA_CRX2RNX), "-f", str(ruta_crx)],
             cwd=ruta_crx.parent,
@@ -75,6 +103,10 @@ def convertir_a_rnx(ruta_crx: Path):
         print(f"❌ Fallo en ejecución de CRX2RNX: {e}")
     return None
 def download_file_zip(fecha, estacion, hora_inicio=0, hora_fin=24, rinex_version="3"):
+=======
+def download_file_zip(fecha: datetime, estacion: str, hora_inicio: int = 0, hora_fin: int = 23) -> tuple:
+
+>>>>>>> main:IGS/generate_files.py
     en_rango, dias_diff = is_within_range(fecha)
     if not en_rango:
         return False, f"⚠️ Solo se permiten fechas hasta 182 días antes. Su fecha tiene {dias_diff} días.", None, None
@@ -84,14 +116,22 @@ def download_file_zip(fecha, estacion, hora_inicio=0, hora_fin=24, rinex_version
 
     session = SessionWithHeaderRedirection()
     session.headers.update({"User-Agent": "Mozilla/5.0"})
+<<<<<<< HEAD:src/generate_files.py
 
     vinculos = obtener_vinculos(anio, doy, estacion, hora_inicio, hora_fin, rinex_version)
+=======
+    vinculos = obtener_vinculos(anio, doy, estacion, hora_inicio, hora_fin)
+>>>>>>> main:IGS/generate_files.py
 
     temp_dir = TemporaryDirectory()
     carpeta_salida = Path(temp_dir.name) / f"{estacion}_{fecha.strftime('%Y%m%d')}"
     carpeta_salida.mkdir(parents=True, exist_ok=True)
+<<<<<<< HEAD:src/generate_files.py
 
     archivos_rnx = []
+=======
+    archivos_descargados = 0
+>>>>>>> main:IGS/generate_files.py
 
     for url, archivo in vinculos:
         ruta_gz = carpeta_salida / archivo
@@ -102,6 +142,7 @@ def download_file_zip(fecha, estacion, hora_inicio=0, hora_fin=24, rinex_version
             with open(ruta_gz, "wb") as f:
                 for chunk in r.iter_content(chunk_size=8192):
                     f.write(chunk)
+<<<<<<< HEAD:src/generate_files.py
             if not ruta_gz.exists():
                 continue
             with open(ruta_gz, "rb") as fcheck:
@@ -118,14 +159,27 @@ def download_file_zip(fecha, estacion, hora_inicio=0, hora_fin=24, rinex_version
             time.sleep(1.5)
         except Exception as e:
             print(f"Error al descargar {archivo}: {e}")
+=======
+            archivos_descargados += 1
+            time.sleep(1.5)
+        except Exception:
+            continue  # Puedes agregar logging.warning si quieres
+>>>>>>> main:IGS/generate_files.py
 
     if not archivos_rnx:
         temp_dir.cleanup()
         return False, "No se pudo descargar o convertir ningún archivo.", None, None
 
+<<<<<<< HEAD:src/generate_files.py
     zip_path = carpeta_salida.parent / f"{carpeta_salida.name}.zip"
     with ZipFile(zip_path, "w") as zipf:
         for archivo_rnx in archivos_rnx:
             zipf.write(archivo_rnx, arcname=archivo_rnx.name)
 
     return True, f"Archivos descargados y convertidos exitosamente ({len(archivos_rnx)} archivos).", zip_path, temp_dir
+=======
+    zip_path = Path(temp_dir.name) / f"{carpeta_salida.name}.zip"
+    shutil.make_archive(str(zip_path).replace(".zip", ""), 'zip', root_dir=carpeta_salida)
+
+    return True, "✅ Archivos descargados y comprimidos", zip_path, temp_dir
+>>>>>>> main:IGS/generate_files.py
