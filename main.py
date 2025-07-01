@@ -9,7 +9,8 @@ st.sidebar.title("Menú de herramientas")
 opcion = st.sidebar.selectbox("Selecciona una herramienta:", [
     "INICIO",
     "International GNSS Service (IGS)",
-    "NOAA National Geodetic Survey (NGS)"
+    "NOAA National Geodetic Survey (NGS)",
+    "Precise Orbits PRODUCTS DOWNLOAD",
 ])
 
 if opcion == "INICIO":

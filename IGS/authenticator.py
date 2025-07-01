@@ -3,9 +3,8 @@ from dotenv import load_dotenv
 import os
 
 load_dotenv()  # Carga desde .env
-_USERNAME = "joseSG"
-_PASSWORD = "Oropezita43"
-
+_USERNAME = os.getenv("NASA_USERNAME")
+_PASSWORD = os.getenv("NASA_PASSWORD")
 
 class SessionWithHeaderRedirection(requests.Session):
     AUTH_HOST = 'urs.earthdata.nasa.gov'
