@@ -1,7 +1,8 @@
 import pandas as pd
 import requests
 from geopy.distance import geodesic
-
+import zipfile
+import io
 def cargar_estaciones_local(ruta_csv="data/noaa_cors.csv"):
     df = pd.read_csv(ruta_csv, sep=",")
     df.columns = df.columns.str.lower().str.strip()
@@ -56,6 +57,37 @@ def verificar_disponibilidad_rinex(df_cercanas, anio, doy, tipo='obs'):
             disponibles.append("NO")
             urls.append(None)
 
-    df_cercanas['Available'] = disponibles
-    df_cercanas['URL'] = urls
-    return df_cercanas
+    df_modificado = df_cercanas.copy()
+    df_modificado['Available'] = disponibles
+    df_modificado['URL'] = urls
+    return df_modificado
+def crear_zip_rinex_y_coord(station, url, anio, doy):
+    doy_str = str(doy).zfill(3)
+    yy = str(anio)[-2:]
+    station_lower = station.lower()
+
+    url_rinex = url
+    url_coord = f"https://noaa-cors-pds.s3.amazonaws.com/coord/coord_20/{station_lower}_20.coord.txt"
+    url_control = f"https://noaa-cors-pds.s3.amazonaws.com/rinex/{anio}/{doy_str}/{station.lower()}/{station_lower}{doy_str}0.{yy}S"
+    zip_buffer = io.BytesIO()
+
+    with zipfile.ZipFile(zip_buffer, "w", zipfile.ZIP_DEFLATED) as zip_file:
+        r1 = requests.get(url_rinex)
+        if r1.ok:
+            zip_file.writestr(f"{station_lower}{doy_str}0.{yy}o.gz", r1.content)
+        else:
+            raise Exception(f"RINEX could not be downloaded: {station}")
+        
+        r2 = requests.get(url_coord)
+        if r2.ok:
+            zip_file.writestr(f"{station_lower}_20.coord.txt", r2.content)
+        else:
+            raise Exception(f"Could not download coordinate file: {station}")
+        r3 = requests.get(url_control)
+        if r3.ok:  
+            zip_file.writestr(f"{station_lower}{doy_str}0.{yy}S", r3.content)
+        else:
+            raise Exception(f"Could not download control file: {station}")
+
+    zip_buffer.seek(0)
+    return zip_buffer
