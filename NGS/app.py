@@ -4,7 +4,8 @@ def main():
     from NGS.generate_files import (
         cargar_estaciones_local,
         estaciones_mas_cercanas,
-        verificar_disponibilidad_rinex
+        verificar_disponibilidad_rinex,
+        crear_zip_rinex_y_coord
     )
 
     st.header("**📥 File Download  - NOAA (NGS)**")
@@ -76,10 +77,17 @@ def main():
                         enlaces_disponibles = 0
                         for _, row in df_resultado.iterrows():
                             if row['Available'] == "YES":
-                                # Usamos st.link_button para un estilo más moderno
-                                st.link_button(f"Descargar archivo de {row['Station']}", row['URL'])# verify header
-                                enlaces_disponibles += 1
-                        
+                                try:
+                                    zip_buffer = crear_zip_rinex_y_coord(row['Station'],  row['URL'], anio, doy)
+                                    st.download_button(
+                                        label=f"Download ZIP of {row['Station']}",
+                                        data=zip_buffer,
+                                        file_name=f"{row['Station'].lower()}_{anio}{doy}.zip",
+                                        mime="application/zip"
+                                    )
+                                    enlaces_disponibles += 1
+                                except Exception as e:
+                                    st.error(f"Error downloading {row['Station']}: {e}")
                         if enlaces_disponibles == 0:
                             st.info("No files were found available for the selected stations and date.")
 
