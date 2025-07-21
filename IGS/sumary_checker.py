@@ -93,10 +93,10 @@ def verificar_disponibilidad_summary(sitename, fecha, summary_dict, csv_df):
     info = summary_dict[nombre_corto]
     
     if pd.isna(info["Start"]) or pd.isna(info["End"]):
-        return True, "-"
+        return False, "Invalid date range."
     
     if not (info["Start"] <= fecha <= info["End"]):
-        return True, f"-"
+        return False, f"The selected date is out of range for this station. It must be between {info['Start'].date()} and {info['End'].date()}."
     
     return True, f"1s data available. Format: RINEX v{info['Format']}"
 
