@@ -59,6 +59,7 @@ def main():
                     
                     # Verificar disponibilidad para estas estaciones
                     fecha_utc = datetime.combine(fecha_input, datetime.min.time(), tzinfo=timezone.utc)
+
                     summary_raw = descargar_summary(fecha_utc.year)
                     summary_dict = parsear_summary(summary_raw)
                     
@@ -97,7 +98,7 @@ def main():
         estaciones_disponibles = df_results[df_results['Available'] == True]['Station'].tolist()
 
         if not estaciones_disponibles:
-            st.info("None of the nearby stations have data available for the selected date..")
+            st.info("None of the nearby stations have data available for the selected date.")
         else:
             st.subheader("Select the stations to download")
             estaciones_a_descargar = st.multiselect(
@@ -111,9 +112,9 @@ def main():
                 if not estaciones_a_descargar:
                     st.warning("You must select at least one station to download.")
                 elif hora_fin <= hora_inicio:
-                    st.warning("⚠️ The end time must be greater than the start time.")
+                    st.warning("The end time must be greater than the start time.")
                 elif hora_fin - hora_inicio > 3:
-                    st.warning("⚠️ The interval cannot be more than 3 hours.")
+                    st.warning("The interval cannot be more than 3 hours.")
                 else:
                     fecha_dt = datetime.combine(fecha_input, datetime.min.time())
                     for estacion in estaciones_a_descargar:

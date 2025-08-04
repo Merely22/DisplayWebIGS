@@ -59,7 +59,6 @@ def parsear_summary(contenido_txt):
     df["Start"] = pd.to_datetime(df["Start"], errors="coerce", format="%d-%b-%y").dt.tz_localize(timezone.utc)
     df["End"] = pd.to_datetime(df["End"], errors="coerce", format="%d-%b-%y").dt.tz_localize(timezone.utc)
 
-
     summary_dict = {
         row["Site"]: {
             "Start": row["Start"],
