@@ -123,5 +123,5 @@ def display_map(path_igs, path_noaa):
     folium.LayerControl().add_to(m)
 
     # --- Renderizar el mapa ---
-    st.markdown("## 🌐 Interactiv Map")
+    st.markdown("## 🌐 Interactive Map")
     st_folium(m, width=900, height=600, returned_objects=[])
