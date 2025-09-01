@@ -38,7 +38,7 @@ def obtener_vinculos(anio: int, doy: str, sitename: str, hora_inicio: int = 0, h
     urls = []
     estacion_corto = sitename[:4].lower()
     yy = str(anio)[2:]
-    tipo_archivo = "S" if rinex_version == "3" and estacion_corto in estaciones_tipo_S else "R"
+    tipo_archivo = "S" if rinex_version == "3" and sitename in estaciones_tipo_S else "R"
 
     for hora in range(hora_inicio, hora_fin):
         for minuto in range(0, 60, 15):
