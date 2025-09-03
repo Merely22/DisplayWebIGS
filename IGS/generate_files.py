@@ -3,6 +3,8 @@ import subprocess
 import gzip
 import requests
 import pandas as pd
+import re
+import os
 from geopy.distance import geodesic
 from zipfile import ZipFile
 from pathlib import Path
@@ -63,6 +65,28 @@ def obtener_ruta_ejecutable(directorio_base: str = "data") -> Optional[Path]:
         return None
     return ruta
 
+def localizar_gfzrnx(directorio_base: str = "data", ruta_config: Optional[str] = None) -> Optional[Path]:
+    def ok(p: Path) -> bool:
+        return p.exists() and p.is_file() and os.access(str(p), os.X_OK)
+    if ruta_config:
+        p = Path(ruta_config).resolve()
+        if ok(p): return p
+    env_path = os.getenv("GFZRNX_PATH")
+    if env_path:
+        p = Path(env_path).resolve()
+        if ok(p): return p
+    for d in (Path(directorio_base), Path(directorio_base) / "bin"):
+        for name in ("gfzrnx.exe", "gfzrnx"):
+            p = (d / name).resolve()
+            if ok(p): return p
+    for name in ("gfzrnx.exe", "gfzrnx"):
+        found = shutil.which(name)
+        if found:
+            p = Path(found).resolve()
+            if ok(p): return p
+    print("No se encontró 'gfzrnx'.")
+    return None
+
 # ---  descomprimir_crx_gz  ---
 def descomprimir_crx_gz(ruta_archivo_gz):
     ruta_crx = ruta_archivo_gz.with_suffix("")
@@ -112,6 +136,62 @@ def convertir_a_rnx(ruta_crx: Path, ruta_ejecutable: Path, rinex_version="3"):
         print(f"Excepción al ejecutar CRX2RNX: {e}")
     return None
 
+# unir archivos descargados con gfzrnx
+# --- helpers de nombre (v3 y v2) ---
+def _nombre_merge_desde_primero_v3(first_path: Path, horas_total: int, ext_out: str = "rnx") -> str:
+    name = first_path.name
+    m = re.match(
+        r'^(?P<site>[A-Za-z0-9]+)_(?P<tipo>[SR])_(?P<anio>\d{4})(?P<doy>\d{3})(?P<hh>\d{2})(?P<mm>\d{2})_(?P<intv>[^_]+)_(?P<rest>.+?)\.(?P<ext>rnx|obs|crx)$',
+        name
+    )
+    if m:
+        g = m.groupdict()
+        return f"{g['site']}_{g['tipo']}_{g['anio']}{g['doy']}{g['hh']}{g['mm']}_{horas_total:02d}H_{g['rest']}.{ext_out}"
+    return f"{first_path.stem}_MERGED_{horas_total:02d}H.{ext_out}"
+def _nombre_merge_desde_primero_v2(first_path: Path, horas_total: int) -> str:
+    name = first_path.name
+    m = re.match(
+        r'^(?P<site>[A-Za-z0-9]{4})(?P<doy>\d{3})(?P<hour>[a-zA-Z])(?P<mm>\d{2})\.(?P<yy>\d{2})o$',
+        name
+    )
+    if m:
+        g = m.groupdict()
+        return f"{g['site']}{g['doy']}{g['hour']}{g['mm']}_{horas_total:02d}H.{g['yy']}o"
+    return f"{first_path.stem}_MERGED_{horas_total:02d}H{first_path.suffix}"
+
+def unir_archivos_rnx(archivos_rnx: list[Path],
+                      rinex_version: str,
+                      horas_total: int,
+                      ruta_gfzrnx: Optional[Path] = None) -> Optional[Path]:
+    if not archivos_rnx:
+        print("unir_archivos_rnx: lista vacía.")
+        return None
+    archivos_rnx = sorted(archivos_rnx, key=lambda p: p.name)
+    first = archivos_rnx[0]
+    if rinex_version == "2":
+        out_name = _nombre_merge_desde_primero_v2(first, horas_total)
+        vo = "2.11"
+    else:
+        out_name = _nombre_merge_desde_primero_v3(first, horas_total, ext_out="rnx")
+        vo = "3.04"
+    out_path = first.parent / out_name
+    gfz = ruta_gfzrnx or localizar_gfzrnx()
+    if not gfz:
+        print("GFZRNX no disponible; no se puede fusionar.")
+        return None
+    cmd = [str(gfz),
+           "-finp", *[str(p) for p in archivos_rnx],
+           "-fout", str(out_path),
+           "-splice_memsave", "-try_append", "900",
+           "-vo", vo]
+    proc = subprocess.run(cmd, capture_output=True, text=True)
+    if proc.returncode != 0:
+        print(f"GFZRNX merge falló:\nCMD: {' '.join(cmd)}\nSTDERR:\n{proc.stderr}")
+        return None
+    if not out_path.exists():
+        print(f"GFZRNX no generó el archivo esperado: {out_path}")
+        return None
+    return out_path
 # añadir funcion
 def download_file_zip(fecha, estacion, hora_inicio=0, hora_fin=24, rinex_version="3"):
     ruta_exe = obtener_ruta_ejecutable() #obtener la ruta del ejecutable AL PRINCIPIO.
@@ -153,14 +233,16 @@ def download_file_zip(fecha, estacion, hora_inicio=0, hora_fin=24, rinex_version
             if not ruta_crx:
                 continue
 
-            #  la ruta del ejecutable a la función de conversión.
+            # convertir .crx/.d -> .rnx o .{yy}o
             ruta_rnx = convertir_a_rnx(ruta_crx, ruta_exe, rinex_version)
-            
+
             if ruta_rnx and ruta_rnx.exists():
                 archivos_rnx.append(ruta_rnx)
-                if ruta_crx.exists(): ruta_crx.unlink()
-            
-            if ruta_gz.exists(): ruta_gz.unlink()
+                if ruta_crx.exists():
+                    ruta_crx.unlink()
+
+            if ruta_gz.exists():
+                ruta_gz.unlink()
 
         except Exception as e:
             print(f"Error inesperado procesando {archivo}: {e}")
@@ -169,15 +251,105 @@ def download_file_zip(fecha, estacion, hora_inicio=0, hora_fin=24, rinex_version
         temp_dir.cleanup()
         return False, "No se pudo descargar o convertir ningún archivo.", None, None
 
+    try:
+        horas_total = int(hora_fin) - int(hora_inicio)
+    except Exception:
+        horas_total = hora_fin - hora_inicio
+
+    if horas_total <= 0:
+        temp_dir.cleanup()
+        return False, "La ventana seleccionada es inválida (hora_fin debe ser mayor a hora_inicio).", None, None
+
+    # === intentar MERGE con GFZRNX (compat. v2/v3) ===
+    merged_path = unir_archivos_rnx(
+        archivos_rnx=archivos_rnx,
+        rinex_version=rinex_version,
+        horas_total=horas_total,
+        ruta_gfzrnx=None
+    )
+
+    # === crear ZIP: si merge ok -> solo merged; si no -> fragmentos ===
     zip_path = carpeta_salida / f"{estacion}_{fecha.strftime('%Y%m%d')}.zip"
     with ZipFile(zip_path, "w") as zipf:
-        for archivo_rnx in archivos_rnx:
-            zipf.write(archivo_rnx, arcname=archivo_rnx.name)
+        if merged_path and merged_path.exists():
+            zipf.write(merged_path, arcname=merged_path.name)
+            msg = f"Saved → {merged_path.name}."
+        else:
+            for archivo_rnx in archivos_rnx:
+                zipf.write(archivo_rnx, arcname=archivo_rnx.name)
+            msg = f"No se pudo fusionar."
 
-    return True, f"Archivos descargados y convertidos ({len(archivos_rnx)}).", zip_path, temp_dir
+    return True, msg, zip_path, temp_dir
 
+def obtener_rnx_para_estacion(fecha, estacion, hora_inicio=0, hora_fin=24, rinex_version="3"):
+    ruta_exe = obtener_ruta_ejecutable()
+    if not ruta_exe:
+        return False, "No se encontró CRX2RNX.exe.", [], None
+    en_rango, dias_diff = is_within_range(fecha)
+    if not en_rango:
+        return False, f"⚠️ La fecha tiene {dias_diff} días de antigüedad (máx 182).", [], None
+    anio, mes, dia = fecha.year, fecha.month, fecha.day
+    doy = str(calculate_date(anio, mes, dia)).zfill(3)
+    session = SessionWithHeaderRedirection()
+    session.headers.update({"User-Agent": "Mozilla/5.0"})
+    vinculos = obtener_vinculos(anio, doy, estacion, hora_inicio, hora_fin, rinex_version)
+    temp_dir = TemporaryDirectory()
+    carpeta_salida = Path(temp_dir.name)
+    archivos_rnx = []
+    print(f"\nIniciando descarga para la estación {estacion}...")
+    for url, archivo in vinculos:
+        ruta_gz = carpeta_salida / archivo
+        try:
+            r = session.get(url, stream=True, timeout=30)
+            if r.status_code != 200:
+                print(f"-> Fallo en URL (Status {r.status_code}): {url}")
+                continue
 
+            with open(ruta_gz, "wb") as f:
+                for chunk in r.iter_content(chunk_size=1<<20):
+                    if chunk:
+                        f.write(chunk)
 
+            print(f"-> Descargado: {archivo}")
+
+            ruta_crx = descomprimir_crx_gz(ruta_gz)
+            if not ruta_crx:
+                continue
+
+            ruta_rnx = convertir_a_rnx(ruta_crx, ruta_exe, rinex_version)
+            if ruta_rnx and ruta_rnx.exists():
+                archivos_rnx.append(ruta_rnx)
+                if ruta_crx.exists(): ruta_crx.unlink()
+
+            if ruta_gz.exists(): ruta_gz.unlink()
+
+        except Exception as e:
+            print(f"Error inesperado procesando {archivo}: {e}")
+
+    if not archivos_rnx:
+        temp_dir.cleanup()
+        return False, "No se pudo descargar o convertir ningún archivo.", [], None
+
+    # ventana en horas (fin exclusivo)
+    try:
+        horas_total = int(hora_fin) - int(hora_inicio)
+    except Exception:
+        horas_total = hora_fin - hora_inicio
+    if horas_total <= 0:
+        temp_dir.cleanup()
+        return False, "Ventana inválida (hora_fin > hora_inicio).", [], None
+
+    # intentar MERGE con GFZRNX
+    merged_path = unir_archivos_rnx(
+        archivos_rnx=archivos_rnx,
+        rinex_version=rinex_version,
+        horas_total=horas_total,
+        ruta_gfzrnx=None
+    )
+    if merged_path and merged_path.exists():
+        return True, f"Merged OK → {merged_path.name}", [merged_path], temp_dir
+    else:
+        return True, f"No se pudo fusionar; se devuelven {len(archivos_rnx)} fragmentos.", archivos_rnx, temp_dir
 
 
 

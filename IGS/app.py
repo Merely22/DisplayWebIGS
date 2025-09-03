@@ -2,8 +2,10 @@ import streamlit as st
 import pandas as pd
 from datetime import datetime, timezone
 import os
+from tempfile import TemporaryDirectory
+from zipfile import ZipFile
 from pathlib import Path
-from IGS.generate_files import download_file_zip, estaciones_mas_cercanas
+from IGS.generate_files import download_file_zip, estaciones_mas_cercanas, obtener_rnx_para_estacion
 from IGS.components import mostrar_info_estacion_resumida
 from IGS.sumary_checker import descargar_summary, parsear_summary, verificar_disponibilidad_summary, obtener_formato_rinex
 
@@ -67,6 +69,7 @@ def main():
                         estacion = row['estacion']
                         disponible, mensaje = verificar_disponibilidad_summary(estacion, fecha_utc, summary_dict, df_stations)
                         rinex_v = obtener_formato_rinex(estacion, summary_dict) if disponible else None
+                        rinex_v = "3" if rinex_v not in ("2", "3") else rinex_v
                         results.append({
                             "Station": estacion,
                             "Distance_km": row['distancia_km'],
@@ -116,21 +119,21 @@ def main():
                     st.warning("⚠️ The interval cannot be more than 3 hours.")
                 else:
                     fecha_dt = datetime.combine(fecha_input, datetime.min.time())
-                    for estacion in estaciones_a_descargar:
-                        # Recuperar la versión de rinex guardada
+                    if len(estaciones_a_descargar) == 1:
+                        estacion = estaciones_a_descargar[0]
                         rinex_version = df_results.loc[df_results['Station'] == estacion, 'Rinex_version'].iloc[0]
-                        
+                        rinex_version = "3" if rinex_version not in ("2", "3") else rinex_version
+
                         st.markdown(f"--- \n#### Processing `{estacion}`...")
                         with st.spinner(f"Generating ZIP for {estacion}..."):
                             resultado, mensaje, zip_path, temp_dir = download_file_zip(
                                 fecha_dt, estacion, hora_inicio, hora_fin, rinex_version
                             )
-                            
                             if resultado and zip_path:
                                 st.success(f"✅ {mensaje}")
                                 with open(zip_path, "rb") as f:
                                     st.download_button(
-                                        f" {estacion}",
+                                        f"Download {estacion}",
                                         data=f,
                                         file_name=os.path.basename(zip_path),
                                         mime="application/zip"
@@ -139,6 +142,55 @@ def main():
                                     temp_dir.cleanup()
                             else:
                                 st.error(f"⚠️ {mensaje}")
+                    # Si hay varias, generar RNX por estación y luego un solo ZIP combinado
+                    else:
+                        conjuntos = []   # [(estacion, [Path,...], temp_dir)]
+                        ok_al_menos_una = False
+
+                        for estacion in estaciones_a_descargar:
+                            rinex_version = df_results.loc[df_results['Station'] == estacion, 'Rinex_version'].iloc[0]
+                            rinex_version = "3" if rinex_version not in ("2", "3") else rinex_version
+
+                            st.markdown(f"--- \n#### Processing `{estacion}`...")
+                            with st.spinner(f"Generating RNX for {estacion}..."):
+                                ok, msg, archivos, temp_dir = obtener_rnx_para_estacion(
+                                    fecha_dt, estacion, hora_inicio, hora_fin, rinex_version
+                                )
+                                if ok and archivos:
+                                    ok_al_menos_una = True
+                                    st.success(f"✅ {msg}")
+                                    conjuntos.append((estacion, archivos, temp_dir))
+                                else:
+                                    st.error(f"⚠️ {msg}")
+
+                        if not ok_al_menos_una:
+                            st.stop()
+
+                        # Crear un único ZIP con los RNX de TODAS las estaciones
+                        tmp_zip = TemporaryDirectory()
+                        combined_name = f"IGS_{fecha_input.strftime('%Y%m%d')}_{len(conjuntos)}stations.zip"
+                        combined_zip_path = Path(tmp_zip.name) / combined_name
+
+                        with ZipFile(combined_zip_path, "w") as master:
+                            for estacion, archivos, _tmp in conjuntos:
+                                for p in archivos:
+                                    # Guardar en subcarpeta por estación para evitar colisiones
+                                    arcname = f"{estacion}/{p.name}"
+                                    master.write(p, arcname=arcname)
+
+                        st.success(f"Archivos de {len(conjuntos)} estaciones listos para descargar.")
+                        with open(combined_zip_path, "rb") as f:
+                            st.download_button(
+                                "Download combined ZIP",
+                                data=f,
+                                file_name=combined_name,
+                                mime="application/zip"
+                            )
+
+                        # Limpieza
+                        for _est, _archs, _tmp in conjuntos:
+                            if _tmp:
+                                _tmp.cleanup()
 
 # Bloque de ejecución principal
 #if __name__ == "__main__":
