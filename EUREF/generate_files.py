@@ -39,12 +39,6 @@ class HighRateLink:
 # ------------------ helpers carpeta ------------------
 
 def _normalize_carpeta_value(value: Optional[str]) -> str:
-    """
-    Normaliza la columna 'carpeta':
-      - 'IGS' -> 'IGS'
-      - 'EPN' o 'EUREF' -> 'EUREF'
-      - vacío/desconocido -> 'IGS' (por defecto)
-    """
     if not value:
         return "IGS"
     v = str(value).strip().upper()
@@ -176,9 +170,6 @@ def obtener_vinculos_igs_highrate(
     carpeta: str = "IGS",
     minutos: Sequence[int] = MINUTOS_15M,
 ) -> List[HighRateLink]:
-    """
-    Genera todos los vínculos para la estación en la "carpeta" indicada (IGS/EUREF).
-    """
     site = sitename.upper().strip().rstrip("_")
     tipos = _tipos_auto(site, estaciones_tipo_S)
     carpeta_norm = _normalize_carpeta_value(carpeta)
@@ -284,10 +275,7 @@ def descargar_y_procesar_estacion(
     estaciones_tipo_S: Optional[Iterable[str]] = None,
     carpeta: str = "IGS",
 ) -> Tuple[bool, str, io.BytesIO]:
-    """
-    Descarga CRX.gz desde la carpeta indicada (IGS/EUREF), convierte a RNX y fusiona.
-    Devuelve (ok, mensaje, zip_bytes).
-    """
+
     site = station.upper().strip().rstrip("_")
     links = obtener_vinculos_igs_highrate(
         anio=anio, doy=doy, sitename=site,

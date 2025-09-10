@@ -15,51 +15,97 @@ from .generate_files import (
 
 EUREF_DB_PATH = "data/EUREF_High-Rate.csv"  # CSV ya generado (filtrado + Tipo + Carpeta)
 
-# ---------------- Cards helpers ----------------
+# ---------------- Helpers para "cards" de estación ----------------
 
-def _pick(row, *candidates, fmt=None, default="—"):
-    """Devuelve el primer campo existente en row, con formato opcional."""
+def _get_first(row: pd.Series, *candidates, default="—"):
     for c in candidates:
         if c in row and pd.notna(row[c]):
-            v = row[c]
-            return fmt(v) if fmt else v
+            return row[c]
     return default
 
+def _fmt_latlon(row: pd.Series) -> str:
+    lat = row.get("latitude", None)
+    lon = row.get("longitude", None)
+    try:
+        if pd.notna(lat) and pd.notna(lon):
+            return f"{float(lat):.6f}, {float(lon):.6f}"
+    except Exception:
+        pass
+    return "—"
+
+def _fmt_distance(row: pd.Series) -> str:
+    d = row.get("distance_km", None)
+    try:
+        if pd.notna(d):
+            return f"{float(d):.1f} km"
+    except Exception:
+        pass
+    return "—"
+
 def _render_station_cards(df_near: pd.DataFrame):
-    """Muestra cards con info clave por estación (2 columnas por fila)."""
-    if df_near is None or df_near.empty: 
+    if df_near is None or df_near.empty:
         return
     st.subheader("Station info")
-    # 2 cards por fila
     for i in range(0, len(df_near), 2):
         cols = st.columns(2)
         slice_df = df_near.iloc[i:i+2]
         for j, (_, r) in enumerate(slice_df.iterrows()):
             with cols[j]:
+                station = _get_first(r, "station")
+                city    = _get_first(r, "City", "city", "Town", "Location")
+                country = _get_first(r, "Country", "country")
+                latlon  = _fmt_latlon(r)
+                dist    = _fmt_distance(r)
+                carpeta = _get_first(r, "carpeta")
+                tipo    = _get_first(r, "Tipo", "tipo")
+                agency  = _get_first(r, "Station Owner", "agency", "Owner", "operator")
+                domes   = _get_first(r, "Domes", "DOMES", "domes")
+                monum   = _get_first(r, "TectonicPlate")
+
                 st.markdown(
                     f"""
 <div style="border:1px solid #e6e6e6;border-radius:12px;padding:12px;">
-  <div style="font-weight:700;font-size:1.05rem;">{_pick(r, 'station')}</div>
+  <div style="font-weight:700;font-size:1.05rem;">{station}</div>
   <div style="color:#666;margin-bottom:6px;">
-    {_pick(r, 'City', 'city', 'Town', 'Location')} • {_pick(r, 'Country', 'country')}
+    {city} • {country}
   </div>
   <div style="font-size:0.95rem;line-height:1.35;">
-    <b>Lat/Lon:</b> {_pick(r, 'latitude'):.6f}, {_pick(r, 'longitude'):.6f}<br/>
-    <b>Distance:</b> {_pick(r, 'distance_km', fmt=lambda x: f"{x:.1f} km")}<br/>
-    <b>Folder:</b> {_pick(r, 'carpeta')} &nbsp;&nbsp; <b>Tipo:</b> {_pick(r, 'Tipo', 'tipo')}<br/>
-    <b>Agency:</b> {_pick(r, 'Agency', 'agency', 'Owner', 'operator')}<br/>
-    <b>DOMES:</b> {_pick(r, 'Domes', 'DOMES', 'domes')}<br/>
-    <b>Monument:</b> {_pick(r, 'Monument', 'monument')}
+    <b>Lat/Lon:</b> {latlon}<br/>
+    <b>Distance:</b> {dist}<br/>
+    <b>Folder:</b> {carpeta} &nbsp;&nbsp; <b>Tipo:</b> {tipo}<br/>
+    <b>Agency:</b> {agency}<br/>
+    <b>DOMES:</b> {domes}<br/>
+    <b>Tectonic Plate:</b> {monum}
   </div>
 </div>
                     """,
                     unsafe_allow_html=True
                 )
 
+# ---------------- App ----------------
+
 def main():
     st.header("**📥 File Download - EUREF/IGS (EUROPE) High-Rate (RINEX 3)**")
 
-    # --- Paso 1: Entradas ---
+    # ==== Sidebar: enlace + citación ====
+    with st.sidebar:
+        st.markdown("### 📍 EPN Coordinates (ETRS89/ETRF)")
+        st.markdown("[Open EPN Coordinates Portal](http://epncb.oma.be/_productsservices/coordinates/#Solution)")
+        st.markdown("---")
+        st.markdown("#### How to cite")
+        st.markdown(
+            """
+**Please cite the EPN Multi-year Position and Velocity Solutions as:**
+
+Legrand J. (2022): *EPN multi-year position and velocity solution CWWWW*, Available from Royal Observatory of Belgium, https://doi.org/10.24414/ROB-EUREF-CWWWW.
+
+**A DOI is also available for each solution since solution C2085. Please cite the current multi-year solution as:**
+
+Legrand J. (2022): *EPN multi-year position and velocity solution C2235*, Available from Royal Observatory of Belgium, https://doi.org/10.24414/ROB-EUREF-C2235.
+            """
+        )
+
+    # --- Paso 1: Inputs ---
     st.subheader("*Search your locations*")
     c1, c2, c3 = st.columns(3)
     with c1:
@@ -75,23 +121,21 @@ def main():
     with c5:
         hora_fin = st.number_input("End hour (exclusive, 1–24)", min_value=1, max_value=24, value=24, step=1)
 
-    # Estado
     if "df_cercanas_euref" not in st.session_state:
         st.session_state.df_cercanas_euref = None
 
-    # Buscar 4 más cercanas (sin check availability ni links)
     if st.button("Search nearest stations"):
         if lat is None or lon is None:
             st.warning("Please enter a valid latitude and longitude.")
         else:
             with st.spinner("Searching stations..."):
                 try:
-                    df = cargar_estaciones_local(EUREF_DB_PATH)  # incluye carpeta/tipo si existen
+                    df = cargar_estaciones_local(EUREF_DB_PATH)
                     st.session_state.df_cercanas_euref = estaciones_mas_cercanas(df, lat, lon, n=4)
                     st.success(f"Found {len(st.session_state.df_cercanas_euref)} nearby stations.")
                     cols = ["station", "latitude", "longitude", "distance_km", "carpeta"]
                     cols = [c for c in cols if c in st.session_state.df_cercanas_euref.columns]
-                    st.dataframe(st.session_state.df_cercanas_euref[cols])
+                    st.dataframe(st.session_state.df_cercanas_euref[cols], use_container_width=True)
                     _render_station_cards(st.session_state.df_cercanas_euref)
                 except Exception as e:
                     st.error(f"Error while searching stations: {e}")
@@ -99,18 +143,17 @@ def main():
 
     # --- Paso 2: Selección (1–4) y descarga ---
     if st.session_state.df_cercanas_euref is not None and not st.session_state.df_cercanas_euref.empty:
-        st.subheader("**Select stations to download/merge**")
+        st.subheader("**Select stations to download**")
         opciones = st.session_state.df_cercanas_euref["station"].tolist()
         seleccion = st.multiselect("Choose 1–4 stations:", options=opciones, default=opciones[:1], max_selections=4)
 
-        # Set de 'S' si el CSV trae columna Tipo (auto); si no, backend intentará S y R
         estaciones_tipo_S = None
         try:
             estaciones_tipo_S = cargar_estaciones_tipo_S(EUREF_DB_PATH)
         except Exception:
             pass
 
-        if st.button("Download, convert (CRX→RNX) and merge"):
+        if st.button("Download"):
             if not seleccion:
                 st.warning("Select at least one station.")
                 return
@@ -124,7 +167,7 @@ def main():
             zips: list[tuple[str, BytesIO]] = []
             logs = []
 
-            with st.spinner("Processing... (download → CRX2RNX → GFZRNX)"):
+            with st.spinner("Processing... "):
                 for stn in seleccion:
                     carpeta = df_n.loc[df_n["station"] == stn, "carpeta"].iloc[0] if "carpeta" in df_n.columns else "IGS"
                     ok, msg, zipbuf = descargar_y_procesar_estacion(
@@ -148,7 +191,6 @@ def main():
                 st.error("No station produced output.")
                 return
 
-            # 1 estación → 1 ZIP ; 2–4 → ZIP combinado
             if len(zips) == 1:
                 stn, buf = zips[0]
                 st.download_button(
@@ -166,7 +208,5 @@ def main():
                     mime="application/zip",
                 )
 
-# Ejecutable directo (si no lo importas en tu main de Streamlit)
 if __name__ == "__main__":
-    # No llames st.set_page_config aquí si lo importas en tu main.py
     main()
