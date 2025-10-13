@@ -88,22 +88,22 @@ def main():
     st.header("**📥 File Download - EUREF/IGS (EUROPE) High-Rate (RINEX 3)**")
 
     # ==== Sidebar: enlace + citación ====
-    with st.sidebar:
-        st.markdown("### 📍 EPN Coordinates (ETRS89/ETRF)")
-        st.markdown("[Open EPN Coordinates Portal](http://epncb.oma.be/_productsservices/coordinates/#Solution)")
-        st.markdown("---")
-        st.markdown("#### How to cite")
-        st.markdown(
-            """
-**Please cite the EPN Multi-year Position and Velocity Solutions as:**
+    #with st.sidebar:
+        #st.markdown("### 📍 EPN Coordinates (ETRS89/ETRF)")
+        #st.markdown("[Open EPN Coordinates Portal](http://epncb.oma.be/_productsservices/coordinates/#Solution)")
+        #st.markdown("---")
+        #st.markdown("#### How to cite")
+        #st.markdown(
+            #"""
+#**Please cite the EPN Multi-year Position and Velocity Solutions as:**
 
-Legrand J. (2022): *EPN multi-year position and velocity solution CWWWW*, Available from Royal Observatory of Belgium, https://doi.org/10.24414/ROB-EUREF-CWWWW.
+#Legrand J. (2022): *EPN multi-year position and velocity solution CWWWW*, Available from Royal Observatory of Belgium, https://doi.org/10.24414/ROB-EUREF-CWWWW.
 
-**A DOI is also available for each solution since solution C2085. Please cite the current multi-year solution as:**
+#**A DOI is also available for each solution since solution C2085. Please cite the current multi-year solution as:**
 
-Legrand J. (2022): *EPN multi-year position and velocity solution C2235*, Available from Royal Observatory of Belgium, https://doi.org/10.24414/ROB-EUREF-C2235.
-            """
-        )
+#Legrand J. (2022): *EPN multi-year position and velocity solution C2235*, Available from Royal Observatory of Belgium, https://doi.org/10.24414/ROB-EUREF-C2235.
+            #"""
+        #)
 
     # --- Paso 1: Inputs ---
     st.subheader("*Search your locations*")
