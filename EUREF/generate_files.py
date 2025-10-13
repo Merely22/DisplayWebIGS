@@ -15,10 +15,6 @@ from typing import Iterable, List, Optional, Sequence, Tuple, Union
 import pandas as pd
 from geopy.distance import geodesic
 
-# =========================================================
-# Bases por "carpeta" (IGS vs EPN/EUREF)
-# =========================================================
-
 BKG_BASES = {
     "IGS":   "https://igs.bkg.bund.de/root_ftp/IGS/highrate/{year}/{doy}/{hour_letter}/{filename}",
     "EUREF": "https://igs.bkg.bund.de/root_ftp/EUREF/highrate/{year}/{doy}/{hour_letter}/{filename}",
