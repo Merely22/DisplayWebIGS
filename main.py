@@ -20,7 +20,8 @@ opcion = st.sidebar.selectbox("Select a tool:", [
     "Home",
     "International GNSS Service (IGS)",
     "NOAA National Geodetic Survey (NGS)",
-    "Precise Orbits Download",
+    "European Reference Frame (EUREF)",
+    "Precise Orbits Download"
 ])
 
 if opcion == "Home":
@@ -33,11 +34,16 @@ if opcion == "Home":
 
 elif opcion == "International GNSS Service (IGS)":
     from IGS import app as igs_app
-    igs_app.main() 
+    igs_app.main()
 
 elif opcion == "NOAA National Geodetic Survey (NGS)":
     from NGS import app as ngs_app
     ngs_app.main()
+
+elif opcion == "European Reference Frame (EUREF)":
+    from EUREF import app as euref_app
+    euref_app.main()
+
 elif opcion == "Precise Orbits Download":
     from efemerides import app as efemerides_app
     efemerides_app.main()

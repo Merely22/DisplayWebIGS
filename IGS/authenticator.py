@@ -2,19 +2,15 @@ import requests
 from dotenv import load_dotenv
 import os
 
-def get_credentials():
-    load_dotenv()  # Funciona en local; en producción no afecta si .env no existe
-    username = os.getenv("NASA_USERNAME")
-    password = os.getenv("NASA_PASSWORD")
-    return username, password
-
+load_dotenv()  # Carga desde .env
+_USERNAME = "joseSG"
+_PASSWORD = "Oropezita43"
 class SessionWithHeaderRedirection(requests.Session):
     AUTH_HOST = 'urs.earthdata.nasa.gov'
 
     def __init__(self):
         super().__init__()
-        username, password = get_credentials()
-        self.auth = (username, password)
+        self.auth = (_USERNAME, _PASSWORD)
 
     def rebuild_auth(self, prepared_request, response):
         headers = prepared_request.headers
@@ -23,4 +19,4 @@ class SessionWithHeaderRedirection(requests.Session):
         if (original_parsed.hostname != redirect_parsed.hostname) and \
            (redirect_parsed.hostname != self.AUTH_HOST) and \
            (original_parsed.hostname != self.AUTH_HOST):
-            headers.pop('Authorization', None)
+            del headers['Authorization']
