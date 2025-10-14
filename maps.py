@@ -5,22 +5,26 @@ from folium.plugins import MarkerCluster
 from geopy.distance import geodesic
 from streamlit_folium import st_folium
 
-def display_map(path_igs, path_noaa):
+def display_map(path_igs, path_noaa, path_euref):
     @st.cache_data
-    def load_data(path_igs, path_noaa):
+    def load_data(path_igs, path_noaa, path_euref):
         df1 = pd.read_csv(path_igs)
         df2 = pd.read_csv(path_noaa)
+        df3 = pd.read_csv(path_euref)
 
         df1.columns = df1.columns.str.lower().str.strip()
         df2.columns = df2.columns.str.lower().str.strip()
+        df3.columns = df3.columns.str.lower().str.strip()
 
         df1 = df1.rename(columns={"site name": "Station", "latitude": "Latitude", "longitude": "Longitude"})
         df2 = df2.rename(columns={"siteid": "Station", "y": "Latitude", "x": "Longitude"})
+        df3 = df3.rename(columns={"name": "Station", "latitude": "Latitude", "longitude": "Longitude"})
         
         df1["Source"] = "IGS Stations"
         df2["Source"] = "NOAA Stations"
+        df3["Source"] = "EUREF Stations"
 
-        df_all = pd.concat([df1, df2], ignore_index=True).dropna(subset=['Latitude', 'Longitude'])
+        df_all = pd.concat([df1, df2, df3], ignore_index=True).dropna(subset=['Latitude', 'Longitude'])
         df_all["popup"] = df_all.apply(
             lambda row: f"<b>Station:</b> {row['Station']}<br>"
                         f"<b>Source:</b> {row['Source']}<br>"
@@ -29,7 +33,7 @@ def display_map(path_igs, path_noaa):
         )
         return df_all
 
-    df_all = load_data(path_igs, path_noaa)
+    df_all = load_data(path_igs, path_noaa, path_euref)
 
     # --- Interfaz de usuario ---
     col1, col2 = st.columns(2)
@@ -50,6 +54,7 @@ def display_map(path_igs, path_noaa):
     # Creamos un cluster para cada fuente de datos
     cluster_igs = MarkerCluster(name="IGS Stations").add_to(m)
     cluster_noaa = MarkerCluster(name="NOAA Stations").add_to(m)
+    cluster_euref = MarkerCluster(name="EUREF Stations").add_to(m)
 
     # Añadimos los puntos a sus respectivos clusters
     for _, row in df_all[df_all['Source'] == "IGS Stations"].iterrows():
@@ -63,6 +68,12 @@ def display_map(path_igs, path_noaa):
             location=(row["Latitude"], row["Longitude"]), radius=5, color="green", fill=True, fill_color="green",
             fill_opacity=0.6, popup=folium.Popup(row["popup"], max_width=300)
         ).add_to(cluster_noaa)
+
+    for _, row in df_all[df_all['Source'] == "EUREF Stations"].iterrows():
+        folium.CircleMarker(
+            location=(row["Latitude"], row["Longitude"]), radius=5, color="orange", fill=True, fill_color="orange",
+            fill_opacity=0.6, popup=folium.Popup(row["popup"], max_width=300)
+        ).add_to(cluster_euref)
 
     # --- Lógica de búsqueda y zoom (se activa con el botón) ---
     if search_button:
@@ -101,7 +112,7 @@ def display_map(path_igs, path_noaa):
 
     # --- Leyenda bien posicionada ---
     legend_html = """
-    <div style='position: absolute; top: 10px; right: 10px; width: 180px;
+    <div style='position: absolute; top: 10px; right: 10px; width: 200px;
                 background-color: rgba(255, 255, 255, 0.85); 
                 z-index: 1000; 
                 padding: 10px; 
@@ -113,6 +124,7 @@ def display_map(path_igs, path_noaa):
         <b>🗺️ LEGEND </b><br>
         <i class="fa fa-circle" style="color:blue"></i> IGS Stations GNSS<br>
         <i class="fa fa-circle" style="color:green"></i> NOAA Stations GNSS<br>
+        <i class="fa fa-circle" style="color:orange"></i> EUREF Stations GNSS<br>
         <i class="fa fa-map-marker" style="color:red"></i> Five nearest stations<br>
         <i class="fa fa-star" style="color:purple"></i> Your location
     </div>

@@ -28,9 +28,10 @@ if opcion == "Home":
     # Define rutas a los CSVs locales
     path_igs = "data/igs_stations.csv"
     path_noaa = "data/noaa_cors.csv"
+    path_euref = "data/EUREF_High-Rate.csv"
 
     # Llama a la función de visualización completa
-    display_map(path_igs, path_noaa)
+    display_map(path_igs, path_noaa, path_euref)
 
 elif opcion == "International GNSS Service (IGS)":
     from IGS import app as igs_app
